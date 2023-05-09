@@ -10,12 +10,16 @@ public:
     topologysort(Node *root):root_(root){}
     void Sort();
 
-    void GetResult();
-
+public:
+    void AddNode(Node*t){
+        
+    }
+    //返回一个排序后的
+    void DoSort(std::vector<Node*> &res);
 private:
-    Node * root_;
-    
-    
+    std::vector<Node*> m_vctBeginNodes;
+    std::unordered_map<uint64_t,std::vector<uint64_t> > m_dict;
+    std::unordered_map<uint64_t,uint32_t> m_score;
 };
 
 }
