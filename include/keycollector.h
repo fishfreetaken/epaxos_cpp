@@ -12,11 +12,12 @@ private:
     std::string value_;     //可以是json，value，或者二进制协议,这里替换一下string
 };
 
-class KeyUnitSwap: public KeyUnit{
+class KeyUnitMsgBody: public KeyUnit{
 
 private:
     std::string key_;
 };
+
 
 class KeyVersionArray {
 public:
@@ -35,6 +36,7 @@ public:
 
     KeyUnit* GetLastOne(); //
     bool IsEmpty(){return list_.size()==0;}
+
 public:
     std::string key_;
     std::vector<KeyUnit*> list_;    //智能指针

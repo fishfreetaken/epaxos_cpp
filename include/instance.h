@@ -8,6 +8,13 @@
 #include "rescode.h"
 namespace epaxos {
 
+class SeqId{
+public:
+    SeqId();
+private:
+    uint64_t seq_;
+    uint32_t nodeId_;  //提出的节点id
+};
 
 class InstanceID {
 public:
@@ -15,8 +22,8 @@ public:
     InstanceID(const InstanceID & t):insid_(t.insid_+1){}
     bool IsNull(){return insid_==0;}
 private:
-    uint64_t insid_;    //自增号
-    uint64_t seqid_;    //序列id，允许重复
+    uint64_t insid_;    //事件id
+    SeqId seqid_;       //全局唯一
     Status state_;      //状态
 };
 
@@ -26,7 +33,7 @@ public:
     bool IsLocalArr(){return bIsLocal_;}
 private:
     uint32_t insId_;
-    bool bIsLocal_;
+    bool bIsLocal_;//是否是本地的队列
     std::vector<InstanceID> arryins_;
 };
 

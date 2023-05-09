@@ -4,16 +4,26 @@
 
 #include "instance.h"
 namespace epaxos {
-class SeqId{
-public:
-    SeqId(InstanceNode *i);
+
+class MsgSeqId public: SeqId {
+public :
+    MsgSeqId(InstanceNode *t);
+}
+
+class KeyUnitMsgBody: public KeyUnit{
+
 private:
-    uint64_t seq_;
+    std::string key_;
 };
 
-//交换协议
-class Communit{
+/**
+ * 主协议的交换流程 
+*/
+class EProcessMsgBody{
 
+private:
+    MsgSeqId seqId_;
+    KeyUnitMsgBody msgBody_;
 };
 
 };
