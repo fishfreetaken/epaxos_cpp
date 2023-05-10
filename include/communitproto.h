@@ -10,12 +10,6 @@ public :
     MsgSeqId(InstanceNode *t);
 }
 
-class KeyUnitMsgBody: public KeyUnit{
-
-private:
-    std::string key_;
-};
-
 /**
  * 主协议的交换流程 
 */

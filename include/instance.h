@@ -22,9 +22,10 @@ public:
     InstanceID(const InstanceID & t):insid_(t.insid_+1){}
     bool IsNull(){return insid_==0;}
 private:
-    uint64_t insid_;    //事件id
-    SeqId seqid_;       //全局唯一
-    Status state_;      //状态
+    uint64_t insid_;        //事件id
+    SeqId seqid_;           //全局唯一
+    WorkStatus state_;      //状态
+    std::string key_;       //根据key索引value
 };
 
 class InstanceArrIds {
@@ -33,8 +34,8 @@ public:
     bool IsLocalArr(){return bIsLocal_;}
 private:
     uint32_t insId_;
-    bool bIsLocal_;//是否是本地的队列
-    std::vector<InstanceID> arryins_;
+    bool bIsLocal_;
+    std::vector<InstanceID> arryins_; //双端队列
 };
 
 class InstanceNode {

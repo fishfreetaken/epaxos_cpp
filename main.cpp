@@ -1,15 +1,20 @@
 
 #include <stdio.h>
-#include "include/node.h"
-#include "algorithm/topology_sort.h"
 
- int main(){
-    epaoxs::Node t(112);
+uint32_t uNodeNum = 3;
 
-    epaoxs::topologysort a; 
-
-    printf("hello s:%d\n",t.GetVale());
+class Node {
+public:
 
 
-    return 0;
+private:
+   
+};
+
+int main(){
+   
+   for(unsigned i =0;i< ){
+
+   }
+   return 0;
  }

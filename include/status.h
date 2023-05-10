@@ -2,7 +2,7 @@
 
 namespace epaxos {
 
-class Status{
+class WorkStatus{
     enum emPaxosState{
         EM_STATUS_PROPOSE = 1,
         EM_STATUS_PREACCEPT = 2,
