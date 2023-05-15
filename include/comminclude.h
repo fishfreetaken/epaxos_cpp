@@ -1,4 +1,6 @@
 
+#ifndef __EPAXOS_COMM_INCLUDE__
+#define __EPAXOS_COMM_INCLUDE__
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,3 +10,7 @@
 #include <unordered_map>
 #include <deque>
 #include <cassert>
+#include <strstream>
+#include <iostream>
+
+#endif

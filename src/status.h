@@ -17,6 +17,8 @@ public:
     void StepToCommit();
 
     bool IsPreAccept();
+
+    bool operator < (const WorkStatus &a)const { return state_ < a.state_;}
     
 private:
     uint32_t state_;    //本地的状态，枚举值
