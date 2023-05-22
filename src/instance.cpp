@@ -1,12 +1,14 @@
-
 #include "instance.h"
 
 #include <numeric>
 namespace  epaxos {
 
-InstanceID::InstanceID(uint64_t insId,uint32_t nodeid,uint32_t insNodeNum,uint64_t seq):insid_(insId),seqid_(seq){
-    deps_.resize(insNodeNum,0);
-    deps_[nodeid] = insId-1;
+void DepsIDs::Update(NodeID idx,const InsID &a){
+    at(idx)->Update(a);
+}
+
+Instance::Instance(NodeSize s, const epaxos_client::OperationKVArray & arrvalues):deps_(s){
+    arrvalues.GetArrKeys(arrkeys_);
 }
 
 /**
@@ -14,40 +16,27 @@ InstanceID::InstanceID(uint64_t insId,uint32_t nodeid,uint32_t insNodeNum,uint64
  * 
  * @param ins 
  */
-void InstanceID::UpdateSeqAndInsertDep(uint32_t nodeid,const InstanceID *ins){
+void Instance::Update(const NodeID nid, const MutexSeqID &seq , const InsID &ins ){
 
-    if (seqid_ <= ins->seqid_){
-        seqid_ = ins->seqid_ + 1;
-    }
-    assert(nodeid< deps_.size());
-    deps_[nodeid] = ins->insid_;
+    seqid_.UpdateAhead(seq);
+
+    deps_.Update(nid,ins);
 }
 
-void InstanceID::UpdateSeqAndInsertDep(const InstanceArrIds &arr){
-    UpdateSeqAndInsertDep(arr.GetNodeID(),arr.GetMaxmumInstanID());
-}   
-
-void InstanceID::InsertKeys(const epaxos_client::OperationKVArray & arrvalues) {
-    arrvalues.GetArrKeys(keys_);
-}
-
-bool InstanceID::NewerAndUpdate(const InstanceID&a){
-    if(a.state_ < state_ ){
+bool Instance::Update(const Instance & a){
+    if(state_.Behand(a.state_)){
         return false;
     }
-    if(a.seqid_ < seqid_) {
-        return false;
-    }
-    assert(a.deps_.size()== deps_.size());
-    seqid_ =  a.seqid_ ;
+    seqid_.Update(a.seqid_);
+
+    deps_.Update(a.deps_);
     state_ = a.state_;
-    std::copy(a.deps_.begin(),a.deps_.end(),deps_.begin());
     return true;
 }
 
-std::string InstanceID::GetDetailInfo()const{
-    std::strstream st;
-    st << "[SeqID: " << seqid_ << "] ";
+std::string Instance::GetDetailInfo()const{
+    std::stringstream st;
+    st << " [SeqID: " << seqid_ << "] ";
     st << " [INSID: " << insid_ << "]" << " [DEPS: ";
     std::for_each(deps_.begin(),deps_.end(),[&](const  uint64_t &a ){
         st << a <<" ";
@@ -62,8 +51,8 @@ std::string InstanceID::GetDetailInfo()const{
 }
 
 
-InstanceID* InstanceArrIds::GetMaxmumInstanID()const{
-    std::map<uint64_t,InstanceID*>::const_reverse_iterator riter = arryins_.rbegin();
+Instance* InstanceArrIds::GetMaxmumInstanID()const{
+    std::map<uint64_t,Instance*>::const_reverse_iterator riter = arryins_.rbegin();
 
     if(riter == arryins_.rend()){
         return nullptr;
@@ -72,32 +61,38 @@ InstanceID* InstanceArrIds::GetMaxmumInstanID()const{
 }
 
 std::string InstanceArrIds::GetArrayDetail()const{
-    std::strstream st;
+    std::stringstream st;
     st << "[Node: " << nodeID_ <<"] ";
     st << "[CurMaxIns: " << curMaxInsId_ << "] "<< std::endl;
-    std::for_each(arryins_.begin(),arryins_.end(),[&](const std::pair <uint64_t,InstanceID *>  & value){
+    std::for_each(arryins_.begin(),arryins_.end(),[&](const std::pair <uint64_t,Instance *>  & value){
         st << "      " << "[InsID: "<<value.first <<"] : " << value.second->GetDetailInfo() << std::endl;
     });
     return st.str();
+}
+
+
+uint64_t InstanceArrIds::IncLocalMaxInsID(){
+    return  ++curMaxInsId_;
 }
 
 /**
  * @brief 获取最新的instance的信息对seq进行递增
  * 
  * @param nodesize 
- * @return InstanceID* 
+ * @return Instance* 
  */
-InstanceID* InstanceArrIds::GenNewInstanceID(uint32_t nodesize){
+Instance* InstanceArrIds::GenNewInstanceID(uint32_t nodesize){
     //lock
-    InstanceID *last = GetMaxmumInstanID();
+    Instance *last = GetMaxmumInstanID();
     assert(last!=nullptr);
-    curMaxInsId_++;//并发问题
 
+    uint64_t lMaxIns = IncLocalMaxInsID();
 
     //获取当前seq的最大值
+    auto fMaxSeq = uint64_t [&last] (){ return last->GetSeqId()+1;}
 
     //获取上一个ins的seq和insid
-    InstanceID *ins = new InstanceID(curMaxInsId_,nodeID_,nodesize,last->GetSeqId()+1);
+    Instance *ins = new Instance(lMaxIns,nodeID_,nodesize,fMaxSeq() );
     assert(ins!=nullptr);
     //获取上一个ins的seq
     
@@ -106,11 +101,11 @@ InstanceID* InstanceArrIds::GenNewInstanceID(uint32_t nodesize){
     return ins;
 }
 
-ResCode InstanceArrIds::InserNewIns(const InstanceID & ins){
+ResCode InstanceArrIds::InserNewIns(const Instance & ins){
     auto iter = arryins_.find(ins.GetInstId());
     if(iter == arryins_.end()){
         //直接拷贝
-        arryins_[ins.GetInstId()]= new InstanceID(ins);
+        arryins_[ins.GetInstId()]= new Instance(ins);
     }else {
         iter->second->NewerAndUpdate(ins);
     }
@@ -132,10 +127,13 @@ InstanceNode::InstanceNode(uint32_t locNodeID, uint32_t nodeNum):
 }
 
 ResCode InstanceNode::InsertNewInst(const InstanceIDSwap & inswap){
-    //不能是自己节点提出的值
-    assert(!localArray_->IsLoacalIns(inswap));
+    //自己不会插入自己的值
+    if(localArray_->IsLoacalIns(inswap)){
+        return ResCode(-1);
+    }
 
-    int indexNode = inswap.GetNodeID();
+    size_t indexNode = inswap.GetNodeID();
+
     //找到对应的队列
     assert(indexNode < inslist_.size() );
     return  inslist_.at(indexNode).InserNewIns(inswap);
@@ -146,17 +144,14 @@ ResCode InstanceNode::InsertNewInst(const InstanceIDSwap & inswap){
  * 
  * @param keys 
  * @param values 
- * @return InstanceID* 
+ * @return Instance* 
  */
 InstanceIDSwap InstanceNode::GenLocalNewInstanceId(const epaxos_client::OperationKVArray & arrvalues){
-    InstanceID*  p_ins = localArray_->GenNewInstanceID(nodeSize_);
+    Instance*  p_ins = localArray_->GenNewInstanceID(nodeSize_);
     //写入db key values
 
     //更新deps
     std::for_each(inslist_.begin(),inslist_.end(),[&](const InstanceArrIds&ins){
-        if(ins.IsLocalArr()){
-            return;
-        }
         p_ins->UpdateSeqAndInsertDep(ins);
     });
 
@@ -170,7 +165,7 @@ InstanceIDSwap InstanceNode::GenLocalNewInstanceId(){
 }
 
 std::string InstanceNode::DebugPrintInstanceNode(){
-    std::strstream st;
+    std::stringstream st;
     st<< "DebugPrintInstanceNode getdetail: " <<std::endl;
     std::for_each(inslist_.begin(),inslist_.end(),[&st](const InstanceArrIds &a ){
         st << a.GetArrayDetail() <<std::endl;

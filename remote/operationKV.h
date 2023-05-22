@@ -28,7 +28,6 @@ public:
     void SetCOpToSet(uint32_t v){op_=CSET; version_= v;}
 
 private:
-    std::string key_;
     std::string value_;
     emOperationType op_;
     uint32_t version_;

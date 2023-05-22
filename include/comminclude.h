@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <deque>
 #include <cassert>
-#include <strstream>
+#include <sstream>
 #include <iostream>
-
+#include <algorithm>
 #endif
