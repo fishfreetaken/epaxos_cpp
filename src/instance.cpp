@@ -3,7 +3,7 @@
 #include <numeric>
 namespace  epaxos {
 
-Instance::Instance(NodeSize s,MutexSeqID seqid ,const epaxos_client::OperationKVArray & arrvalues):deps_(s),seqid_(seqid){
+Instance::Instance(NodeSize s,MutexSeqID seqid ,const epaxos_client::OperationKVArray & arrvalues):seqid_(seqid),deps_(s){
     arrvalues.GetArrKeys(arrkeys_);
 }
 
@@ -31,21 +31,17 @@ IfChange Instance::Update(NodeID nid,const Instance & a){
     return res;
 }
 
-std::string Instance::GetDetailInfo()const{
+std::string Instance::DebugInfo()const{
     std::stringstream st;
-    /*
-    st << " [SeqID: " << seqid_ << "] ";
-    st << " [INSID: " << insid_ << "]" << " [DEPS: ";
-    std::for_each(deps_.begin(),deps_.end(),[&](const  uint64_t &a ){
-        st << a <<" ";
-    });
-    st << "] [KEYS: ";
+    
+    st << " [SeqID: " << seqid_.Value64() << "] ";
+    st << " [Deps: "<< deps_.DebugInfo() << "]";
+    st << " [KEYS: ";
 
-    std::for_each(keys_.begin(),keys_.end(),[&](const std::string &a ){
+    std::for_each(arrkeys_.begin(),arrkeys_.end(),[&](const std::string &a ){
         st << a;
     });
     st << "]";
-    */
     return st.str();
 }
 
@@ -94,13 +90,13 @@ InstanceSwap InstanceCollector::GenOne(NodeSize s, MutexSeqID seqid , const epax
 
     auto iter = clins_.find(mt);
     assert(iter == clins_.end());
-    
-    //更新本地
-    clins_[mt] = p_ins;
 
     InstanceSwap swap = InstanceSwap(id_,mt,p_ins);
 
     RefreshFromLastIns(swap);
+
+    //更新本地
+    clins_[mt] = p_ins;
 
     return swap;
 }
@@ -113,7 +109,7 @@ std::string InstanceCollector::GetArrayDetail()const{
     return st.str();
 }
 
-InstanceNode::InstanceNode(NodeID t,NodeSize s):localNodeId_(t){
+InstanceNode::InstanceNode(NodeID t,NodeSize s):localNodeId_(t),seq_(){
 
     assert(s.Value64()>0);
     assert(t.Value64() < s.Value64());
@@ -178,19 +174,26 @@ ResCode InstanceNode::MutualManageIns(InstanceSwap & inswap){
 InstanceSwap InstanceNode::GenNewInstance(const epaxos_client::OperationKVArray & arrvalues){
 
     seq_.Inc(); //and snapshot
+   
     //自增insid并将所有kv事件写入硬盘
     
     //todo 写入db key values, 自增之后写入
     InstanceSwap sp = localArray_->GenOne(GetArrSize(),seq_,arrvalues);
-
+    //std::cout <<"before update:" << sp.GetChangeInsPtr()->DebugInfo() <<std::endl;
     //更新deps
     std::for_each(inslist_.begin(),inslist_.end(),[&](const InstanceCollector &  ins){
-        if( localNodeId_ == ins.GetNodeID()){
+        if( ins.IsLocalCollector(localNodeId_)){
             //这里逻辑已经过滤了本身的nodeid
+            //std::cout << "local collect: " << localNodeId_.Value64() << std::endl;
             return;
         }
-        ins.RefreshFromLastIns(sp);
+        IfChange res =  ins.RefreshFromLastIns(sp);
+        if (res.IsChange()){
+            //std::cout<<"change id:"<< ins.GetNodeID().Value64() <<std::endl;
+        }
+        //std::cout <<"after update:"<< ins.GetNodeID().Value64() << sp.GetChangeInsPtr()->DebugInfo() <<std::endl;
     });
+    //TODO 固化写入文件
 
     return InstanceSwap(sp);
 }

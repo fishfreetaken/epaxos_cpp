@@ -5,11 +5,6 @@
 #include "nodecfg.h"
 namespace epaxos {
 
-class ArrayItem {
-public:
-    virtual IfChange DoUpdate(const ArrayItem & t);
-};
-
 /**
  * @brief 初始化更新之后就不能发生改变
  * 
@@ -30,7 +25,7 @@ private:
  * @brief 只能通过比较进行更新
  * 
  */
-class IndexItem : public ArrayItem{
+class IndexItem {
 public:
     IndexItem():idx_(0){}
     IndexItem(uint64_t t):idx_(t){}
@@ -52,28 +47,38 @@ private:
 
 class ArrayManage{
 public:
-    ArrayManage(IndexValue &size):vec_(size.Value64()){}
+    ArrayManage(IndexValue &size):vec_(size.Value64(),0){}
     ArrayManage(const ArrayManage &a) {
         vec_.clear();
         std::copy(a.vec_.begin(),a.vec_.end(), std::back_inserter(vec_));
     }
 
-    IfChange UpdateOne(IndexValue & idx, const ArrayItem* y){
+    IfChange UpdateOne(IndexValue & idx, const IndexItem& y){
         assert(idx.Value64() < vec_.size() );
-        return vec_.at(idx.Value64())->DoUpdate(*y);
+        return vec_.at(idx.Value64()).DoUpdate(y);
     }
     IfChange UpdateArray(const ArrayManage & t){
         assert(vec_.size()==t.vec_.size());
         IfChange change;
         for(size_t i=0;i<vec_.size();i++ ){
-            IfChange ttmp =  vec_.at(i)->DoUpdate(*t.vec_.at(i));
+            IfChange ttmp =  vec_.at(i).DoUpdate(t.vec_.at(i));
             change.Refresh(ttmp);
         }
         return change;
     }
 
+    std::string DebugInfo() const{
+        std::stringstream st;
+        size_t pos = 0;
+        std::for_each(vec_.begin(),vec_.end(),[&](const IndexItem &t){
+            st<< "["<< pos <<":"<< t.Value64() <<"] ";
+            pos++; 
+        });
+        return st.str();
+    }
+
 private:
-    std::vector<ArrayItem*> vec_;
+    std::vector<IndexItem> vec_;
 };
 
 };

@@ -6,16 +6,13 @@
 
 int uNodeNum = 5;
 std::vector<epaxos::InstanceNode *> gIns;
-
+/*
 void IterAllInfo(uint64_t generator ){
 
   for(int i=0;i<uNodeNum;i++){
     gIns.push_back(new epaxos::InstanceNode(i,uNodeNum));
   }
 
-  /** 0 生成；1 插入
-   * 
-   */
   epaxos_client::OperationKVArray kv;
   std::cout << "[generator:" << generator<< "]:" <<std::endl;
   size_t i=0;
@@ -37,7 +34,7 @@ void IterAllInfo(uint64_t generator ){
   }
   gIns.clear();
 }
-
+*/
 int main(){
 /*
   epaxos_client::OperationKVArray kv;
@@ -55,15 +52,16 @@ int main(){
   }
   */
 
+  epaxos::InstanceNode n1(1,uNodeNum);
+  epaxos_client::OperationKVArray kv;
+  epaxos::InstanceSwap sp = n1.GenNewInstance(kv);
+  std::cout<< sp.GetChangeInsPtr()->DebugInfo() << std::endl;
   //生成
   //插入
-  uint64_t allNum = 1<<uNodeNum;
+  uint64_t allNum = 1 <<uNodeNum;
 
   std::cout << "iter allnum: "<< allNum <<std::endl;
 
-  for(size_t i = 0;i < allNum ;i++){
-    IterAllInfo(i);
-  }
 
   return 0;
 }

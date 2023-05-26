@@ -28,6 +28,7 @@ class InsID : public IndexItem {
 public:
     InsID(IndexItem a):IndexItem(a){}
     InsID():IndexItem(){}
+
 private:
 };
 
@@ -56,13 +57,12 @@ public:
      * 
      * @return std::string 
      */
-    std::string GetDetailInfo()const;
+    std::string DebugInfo()const;
 
-    MutexSeqID GetSeqId()const{return seqid_;}  
+    MutexSeqID GetSeqId()const{return seqid_;}
 
 private:
     bool IsBehind(const Instance &a) const; //这个值是否落后
-
 private:
     MutexSeqID seqid_;                                  //全局唯一
     WorkStatus state_;                                  //状态
@@ -84,26 +84,20 @@ private:
 
 class InstanceSwap : public IdentifyIns{
 public:
-    InstanceSwap(NodeID nodeid,  InsID insid ,Instance *a):ins_(a),IdentifyIns(nodeid,insid){}
-    InstanceSwap(NodeID nodeid,  Instance *a, const epaxos_client::OperationKVArray * pkv):ins_(a),IdentifyIns(nodeid,InsID(0)),kv_(pkv){}
+    InstanceSwap(NodeID nodeid,  InsID insid ,Instance *a):IdentifyIns(nodeid,insid),ins_(a){}
+    //InstanceSwap(NodeID nodeid,  Instance *a, const epaxos_client::OperationKVArray * pkv):IdentifyIns(nodeid,InsID(0)),ins_(a){}
 
+    const Instance *GetInsPtr()const{return ins_.get();}
 
-    ~InstanceSwap(){
-        if (ins_!=nullptr){
-            delete ins_;
-        }
-    }
+    std::shared_ptr<Instance> GetChangeInsPtr(){return ins_;}
 
-    const Instance * GetInsPtr()const{return ins_;}
-
-    Instance * GetChangeInsPtr(){return ins_;}
+ 
 private:
-    Instance *ins_;
-    const epaxos_client::OperationKVArray * kv_;
+    std::shared_ptr<Instance> ins_;
 };
 
 
-class InstanceCollector:public ArrayItem {
+class InstanceCollector {
 public:
     InstanceCollector(NodeID i):id_(i.Value64()){}
 
@@ -131,6 +125,7 @@ public:
 
     InstanceCollector  operator = (int t){return std::move(InstanceCollector(NodeID(t))); }
 
+    bool IsLocalCollector(const NodeID &id) const{ return id == id_;}
 private:
     const Instance* GetLastOne() const;
 

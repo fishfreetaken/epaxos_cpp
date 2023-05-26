@@ -14,4 +14,5 @@
 #include <iostream>
 #include <algorithm>
 #include "rescode.h"
+#include <memory>
 #endif

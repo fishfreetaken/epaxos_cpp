@@ -1,7 +1,7 @@
 CXX=g++ 
 FLAG=-I./
 
-CFLAGS = -Wall -std=c++11 -I./src -I./include \
+CFLAGS = -g -Wall -std=c++17 -I./src -I./include \
                 -I./ \
 
 TARGET=test
