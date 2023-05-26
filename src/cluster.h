@@ -6,12 +6,12 @@ namespace epaxos{
 //管理整个集群的
 class ClusterMember{
 public: 
-    ClusterMember(NodeID t):id_(t){}
+    ClusterMember(NodeID t):nodeid_(t){}
 
     //查看是否健康
     ResCode GetClusterSize();
 private:
-    NodeID id_;
+    NodeID nodeid_;
 };
 
 class CluseterConfig: public ClusterMember {

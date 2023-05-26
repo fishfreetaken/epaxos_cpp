@@ -9,44 +9,48 @@
 #include "../include/nodecfg.h"
 #include "rescode.h"
 #include "cluster.h"
+#include "../include/arraymanage.h"
 
 namespace epaxos {
 
-class MutexSeqID : public Index{
+class MutexSeqID : public IndexItem{
 public:
+    IfChange Update(const MutexSeqID &t ){
+        //lock 
+        return DoUpdate(t);
+        //unlock
+    }
 private:
 };
 
 //只能单调递增
-class InsID : public Index{
+class InsID : public IndexItem {
 public:
+    InsID(IndexItem a):IndexItem(a){}
+    InsID():IndexItem(){}
 private:
 };
 
-class DepsIDs : private ArrayManage<InsID>{
+class DepsIDs : public ArrayManage{
 public:
-    DepsIDs(NodeSize &s):ArrayManage<InsID>(s.Value()){}
-    /**
-     * @brief 由deps来更新deps
-     * 
-     * @param a 
-     */
-    void Update(NodeID idx,const InsID &a);
+    DepsIDs(NodeSize s):ArrayManage(s){}
 };
 
+/**
+ * @brief 通过insid进行索引
+ * 
+ */
 class Instance {
 public:
-    Instance(NodeSize s):deps_(s){}
-    Instance(NodeSize s, const epaxos_client::OperationKVArray & arrvalues);
+    Instance(NodeSize s, MutexSeqID seqid , const epaxos_client::OperationKVArray & arrvalues);
+    Instance(const Instance & a);
 
     /**
      * @brief 更新本提议的seq值，同时插入并更新当前deps
      * 
      * @param ins 
      */
-    void Update(const NodeID nid, const MutexSeqID &seq,const InsID &ins);
-
-    bool Update(const Instance &a);
+    IfChange Update(NodeID nid,const Instance &a);
     /**
      * @brief Get the Detail Info object 打印自身详情
      * 
@@ -54,9 +58,10 @@ public:
      */
     std::string GetDetailInfo()const;
 
+    MutexSeqID GetSeqId()const{return seqid_;}  
 
 private:
-    bool IsBehind(const Instance &a)const{return a.state_ < state_;} //这个值是否落后
+    bool IsBehind(const Instance &a) const; //这个值是否落后
 
 private:
     MutexSeqID seqid_;                                  //全局唯一
@@ -65,25 +70,42 @@ private:
     DepsIDs deps_;                                      //依赖 insid
 };
 
-class InstanceIDSwap : public Instance{
-public:
-    InstanceIDSwap(const NodeID & nodeid, const InsID& ins ,Instance &a):Instance(a),fromNode_(nodeid),insId_(ins){}
-
-    std::string DetailInfoAddNode(){ return "[Node:"+std::to_string(fromNode_)+"]" + GetDetailInfo(); }
+class IdentifyIns {
+public: 
+    IdentifyIns(NodeID nodeid,  InsID insid ):fromNode_(nodeid),insId_(insid){}
+    NodeID GetNodeID() const{ return fromNode_;}
+    InsID GetInsID() const { return insId_;}
 private:
     NodeID fromNode_;
     InsID insId_;
+    IfChange ch_;
 };
 
-class InstanceArrIds: public ClusterMember {
+
+class InstanceSwap : public IdentifyIns{
 public:
-    InstanceArrIds();
+    InstanceSwap(NodeID nodeid,  InsID insid ,Instance *a):ins_(a),IdentifyIns(nodeid,insid){}
+    InstanceSwap(NodeID nodeid,  Instance *a, const epaxos_client::OperationKVArray * pkv):ins_(a),IdentifyIns(nodeid,InsID(0)),kv_(pkv){}
 
-    //从存储中加载出对应的配置
 
-    Instance* GetMaxmumInstanID()const;
+    ~InstanceSwap(){
+        if (ins_!=nullptr){
+            delete ins_;
+        }
+    }
 
-    Instance* GenNewInstanceID(uint32_t nodesize);
+    const Instance * GetInsPtr()const{return ins_;}
+
+    Instance * GetChangeInsPtr(){return ins_;}
+private:
+    Instance *ins_;
+    const epaxos_client::OperationKVArray * kv_;
+};
+
+
+class InstanceCollector:public ArrayItem {
+public:
+    InstanceCollector(NodeID i):id_(i.Value64()){}
 
     /**
      * @brief 插入新的ins 带有一定的淘汰策略，必须先落盘
@@ -91,44 +113,83 @@ public:
      * @param ins 
      * @return ResCode 
      */
-    ResCode InserNewIns(const Instance & ins);
+    ResCode InsertAndUpdate(const InstanceSwap & ins);
 
     std::string GetArrayDetail() const;
 
-private:    
-    uint64_t IncLocalMaxInsID();
+    /**
+     * @brief 从本地更新外来的值
+     * 
+     * @param st 
+     * @return IfChange 
+     */
+    IfChange RefreshFromLastIns(InstanceSwap & st)const ;
+
+    InstanceSwap GenOne(NodeSize s, MutexSeqID seqid , const epaxos_client::OperationKVArray & arrvalues);
+
+    NodeID GetNodeID()const {return id_;}
+
+    InstanceCollector  operator = (int t){return std::move(InstanceCollector(NodeID(t))); }
 
 private:
+    const Instance* GetLastOne() const;
+
+    Instance * Find(InsID id);
+private:
     InsID curMaxInsId_;  //原子自增
+    NodeID id_;
 
     //lru cache
-    std::map<NodeID,Instance*> arryins_; //有序队列，快速索引查找
+    std::map<InsID,Instance*> clins_; //有序队列，快速索引查找
 };
 
-class InstanceNode : private ArrayManage<InstanceArrIds> {
+
+class InstanceNode {
 public:
-    InstanceNode(NodeID t); //本地的node
+    InstanceNode(NodeID t,NodeSize s); //本地的node
 
     //生成inst事件并保存本地
-    InstanceIDSwap GenLocalNewInstanceId(const epaxos_client::OperationKVArray & arrvalues); 
-
-    //生成一条空的用来进行占位
-    InstanceIDSwap GenLocalNewInstanceId();
+    InstanceSwap GenNewInstance(const epaxos_client::OperationKVArray & arrvalues);
 
     /**
-     * @brief 告诉我是重复的值还是说一个新值增加成功
+     * @brief 从其他node同步写入进来，如果不存在就插入，如果存在就更新本地，同时也要对这个值进行更新
      * 
      * @return ResCode 
      */
-    ResCode InsertNewInst(const InstanceIDSwap & inswap);
+    ResCode MutualManageIns(InstanceSwap & inswap);
+
+    ResCode ReFreshRemote(InstanceSwap & inswap) const;
+
+    /**
+     * @brief 插入或者更新本地，更新ins，更新seq
+     * 
+     * @param inswap 
+     * @return ResCode 
+     */
+    ResCode ReFreshLocal(const InstanceSwap & inswap) ;
+
+    /**
+     * @brief TODO 将当前状态落盘
+     * 
+     * @return ResCode 
+     */
+    ResCode SnapShot();
 
     std::string DebugPrintInstanceNode();
 
 private:
-    InstanceArrIds *localArray_;
-    NodeID localNodeID_;
+    IfChange MaxmumSeqID(MutexSeqID t){ return seq_.Update(t);}
+
+    NodeSize GetArrSize()const{ return NodeSize(inslist_.size());}
+
+private:
+    InstanceCollector *localArray_;
+    std::vector<InstanceCollector > inslist_;
+
+    NodeID localNodeId_;
+
+    MutexSeqID seq_; //不落盘
 };
 
 }
-
 #endif

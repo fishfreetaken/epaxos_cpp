@@ -11,9 +11,9 @@ int OperationKVArray::GetArrKeys(std::vector<std::string> &keys)const {
     return keys.size();
 }
 
-ResCode OperationKVArray::InsertOne(std::string key,OperationKV & one){
+epaxos::ResCode OperationKVArray::InsertOne(std::string key,OperationKV & one){
     arr_[key].push_back(one);
-    return ResCode(2);
+    return epaxos::ResCode(2);
 }
 
 };

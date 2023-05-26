@@ -20,7 +20,7 @@ public:
 
     bool operator < (const WorkStatus &a)const { return state_ < a.state_;}
 
-    bool Behand(const WorkStatus&a); { return a.state_ <= b.state_;}
+    bool Behand(const WorkStatus&a){ return a.state_ <= state_;}
     
 private:
     uint32_t state_;    //本地的状态，枚举值

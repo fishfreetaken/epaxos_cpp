@@ -35,11 +35,12 @@ private:
 
 class OperationKVArray {
 public:
-
-    ResCode InsertOne(std::string key, OperationKV & one);
+    epaxos::ResCode InsertOne(std::string key, OperationKV & one);
     int GetArrKeys(std::vector<std::string> &keys) const;
 private:
     std::unordered_map<std::string,std::vector<OperationKV> > arr_;
+
+    std::string uniqid_;
 };
 };
 

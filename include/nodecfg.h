@@ -6,14 +6,18 @@
 #include "rescode.h"
 namespace epaxos {
 
-class NodeSize : public Index{
+class NodeSize : public IndexValue{
 public:
+    NodeSize()=delete;
+    NodeSize(size_t t):IndexValue(t){};
 private :
 };
 
 //有的应该也可以用一个集群来进行管理
-class NodeID : public Index{
+class NodeID : public IndexValue{
 public:
+    NodeID()=delete;
+    NodeID(size_t t):IndexValue(t){};
 private:
 };
 
