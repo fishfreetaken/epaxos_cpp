@@ -14,7 +14,7 @@ public:
     IndexValue() = delete;
     IndexValue(uint64_t t):val_(t){}
 
-    uint64_t Value64(){return val_;}
+    uint64_t Value64()const{return val_;}
 
     bool operator ==(const IndexValue &a)const { return a.val_ == val_;}
 private:
@@ -35,25 +35,28 @@ public:
     IndexItem Inc(){return IndexItem(++idx_);}
 
     IfChange RefeshLocToAhead(const IndexItem & a){ bool res = a.idx_ >= idx_; idx_ = a.idx_ >= idx_ ? a.idx_+1 : idx_; return IfChange(res); }
-    IfChange DoUpdate(const IndexItem & a){ bool res = a.idx_ >= idx_; idx_ = a.idx_ >= idx_ ? a.idx_ : idx_; return IfChange(res); }
-
-    std::string GetString(){return std::to_string(idx_);}
+    IfChange DoUpdate(const IndexItem & a){ bool res = a.idx_ > idx_; idx_ = a.idx_ > idx_ ? a.idx_ : idx_; return IfChange(res); }
 
     bool operator < (const IndexItem &a )const{return idx_ < a.idx_;}
+
+    bool IsNull(){return idx_==0;}
 
 private:
     uint64_t idx_;
 };
 
+template<typename T>
 class ArrayManage{
 public:
+
+    ArrayManage(){}
     ArrayManage(IndexValue &size):vec_(size.Value64(),0){}
     ArrayManage(const ArrayManage &a) {
         vec_.clear();
         std::copy(a.vec_.begin(),a.vec_.end(), std::back_inserter(vec_));
     }
 
-    IfChange UpdateOne(IndexValue & idx, const IndexItem& y){
+    IfChange UpdateOne(IndexValue idx, const T& y){
         assert(idx.Value64() < vec_.size() );
         return vec_.at(idx.Value64()).DoUpdate(y);
     }
@@ -70,15 +73,17 @@ public:
     std::string DebugInfo() const{
         std::stringstream st;
         size_t pos = 0;
-        std::for_each(vec_.begin(),vec_.end(),[&](const IndexItem &t){
+        std::for_each(vec_.begin(),vec_.end(),[&](const T &t){
             st<< "["<< pos <<":"<< t.Value64() <<"] ";
             pos++; 
         });
         return st.str();
     }
 
+    T GetPosValue(IndexValue idx) const { return vec_[idx.Value64()];}
+
 private:
-    std::vector<IndexItem> vec_;
+    std::vector<T> vec_;
 };
 
 };

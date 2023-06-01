@@ -12,6 +12,8 @@ FILES = $(foreach dir,$(DIRS),$(wildcard $(dir)/*.cpp))
 
 OBJS = $(patsubst %.cpp,%.o, $(FILES))
 
+LOG =loc
+
 .cpp.o:
 	$(CXX) -c $(CFLAGS) $< -o $@
 
@@ -33,3 +35,4 @@ $(TARGET):$(OBJS)
 clean:
 	$(RM) $(TARGET)
 	$(RM) $(OBJS)
+	$(RM) $(LOG)
