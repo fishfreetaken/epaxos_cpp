@@ -12,7 +12,10 @@ public:
     void Refresh(const IfChange &c){
         val_ = c.val_ ? c.val_:val_;
     }
-    bool IsChange(){return val_;}
+    bool IsChange()const {return val_;}
+    void Change(){ val_ = true;}
+
+    bool Value()const{ return val_;}
 private:
     bool val_;
 };

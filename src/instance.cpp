@@ -23,8 +23,8 @@ void Instance::RefreshSeqID(MutexSeqID s){
     seqid_.RefeshLocToAhead(s);
 }
 
-void Instance::RefreshDeps(NodeID nid, InsID t){
-    deps_.UpdateOne(nid,t);
+IfChange Instance::RefreshDeps(NodeID nid, InsID t){
+    return  deps_.UpdateOne(nid,t);
 }
 
 IfChange Instance::Update(NodeID nid,const Instance & a){
@@ -60,8 +60,8 @@ ResCode InstanceCollector::InsertAndUpdate(const InstanceSwap &ins){
         //这里插入一个值
         clins_[ins.GetInsID()] = new Instance(*ins.GetInsPtr());
     }
-
-    curMaxInsId_.DoUpdate(ins.GetInsPtr()->GetSeqId());
+    
+    curMaxInsId_.DoUpdate(ins.GetInsID());
     return  ResCode(0);
 }
 
@@ -103,14 +103,24 @@ InstanceSwap InstanceCollector::GenOne(const DepsIDs& s, MutexSeqID seqid , cons
     return InstanceSwap(id_,mt,p_ins);
 }
 
+//双向更新
 IfChange InstanceCollector::RefreshLocalIns(const InstanceSwap & st){
     //更新本地的deps
 
     InsID  t= st.GetInsPtr()->GetDepsID(id_);
 
-    curMaxInsId_.DoUpdate(t);
+    //这个值就是用来更新本地的，如果本地更新失败，就更新进来的值
+    IfChange res = curMaxInsId_.DoUpdate(t);
+    
+    return res;
+}
 
-    return false;
+IfChange InstanceCollector::MutualRefreshSwap(InstanceSwap & st){
+    IfChange res = RefreshLocalIns(st);
+    if (!res.IsChange() ){
+        st.UpdateDepsIns(id_,curMaxInsId_);
+    }
+    return res;
 }
 
 std::string InstanceCollector::GetState()const{
@@ -170,10 +180,24 @@ ResCode InstanceNode::ReFreshRemote(InstanceSwap & inswap)const{
  * @return ResCode 
  */
 ResCode InstanceNode::MutualManageIns(InstanceSwap & inswap){
+    epaxos::ResCode res;
+    //更新max ins
+    assert(inswap.GetNodeID().Value64() < inslist_.size());
 
-    ResCode res = ReFreshRemote(inswap);
+    //先插入，写入本地事件ins
+    res = inslist_.at(inswap.GetNodeID().Value64()).InsertAndUpdate(inswap);
 
-    res.Refresh(ReFreshLocal(inswap));
+    //dep也需要更新到所有inslis节点上
+    std::for_each(inslist_.begin(),inslist_.end(),[&](InstanceCollector & ins){
+        res.Refresh(ins.MutualRefreshSwap(inswap));
+    });
+
+    if(res.IsChange()){
+         //落盘 todo
+    }
+    
+    //seq 先去更新本地，如果进入的没有发生变化，我再去更新你的
+    seq_.MutualUpdate(inswap.GetMutalInsPtr()->GetSeqIdReference());
     return res;
 }
 

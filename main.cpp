@@ -10,73 +10,21 @@
 #include <set>
 int uNodeNum = 5;
 std::vector<epaxos::InstanceNode *> gIns;
-/*
-void IterAllInfo(uint64_t generator ){
 
-  for(int i=0;i<uNodeNum;i++){
-    gIns.push_back(new epaxos::InstanceNode(i,uNodeNum));
-  }
+std::string PrintfVector(std::vector<uint32_t> & t){
+  std::stringstream sst;
 
-  epaxos_client::OperationKVArray kv;
-  std::cout << "[generator:" << generator<< "]:" <<std::endl;
-  size_t i=0;
-  while (generator > 0 ) {
-    if ( ( generator & 1 ) > 0 ){
-      //命中
-      epaxos_client::OperationKV t(std::string("chendong") + std::to_string(i));
-      kv.InsertOne(std::to_string(generator) + "_" + std::to_string(i),t);
-      epaxos::InstanceIDSwap tInsId = gIns.at(i%uNodeNum)->GenLocalNewInstanceId(kv);
-      //遍历掺入
-      std::cout << "  i:" << i << " "<< tInsId.DetailInfoAddNode() << std::endl;
-    }
-    i++;
-    generator = generator>>1;
+  for(size_t i=0;i<t.size();i++){
+    sst<<t[i] <<" ";
   }
-
-  for(int i=0;i < uNodeNum;i++){
-    delete gIns[i];
-  }
-  gIns.clear();
+  return sst.str();
 }
-*/
-
-class ModFive{
-public:
-  ModFive():val_(5){}
-  uint32_t Value()const {  return val_;}
-private:
-  uint32_t val_;
-};
-
-template<typename T>
-class CicyleMove{
-public:
-  CicyleMove():mv_(0){}
-  CicyleMove(uint32_t t ):mod_(),mv_(t%mod_.Value()){}
-
-  uint32_t Value(){return mv_;}
-  uint32_t Step(const CicyleMove & t){
-    Step();
-    while(t.mv_ == mv_){
-      Step();
-    }
-    return mv_;
-  }
-
-  uint32_t Step(){ mv_ = (mv_+1)%mod_.Value(); return mv_;}
-
-private:
-    T mod_;
-    uint32_t mv_;
-};
-
 
 class IterAllCase{
 public:
   IterAllCase(uint32_t baseNum,uint32_t caseNum):pos_(0),count_(baseNum),div_(caseNum){
     //获取全排列
   }
-
   void Init(){
     std::set<int> st;
     dfs(st,div_,0,0);
@@ -90,9 +38,9 @@ public:
     pos_=0;
   }
 
-  bool GetOneCase(std::vector<uint32_t> &mt){
+  uint32_t GetOneCase(std::vector<uint32_t> &mt){
     if(pos_ >= vc_.size()){
-      return false;
+      return 0;
     }
     mt.clear();
     mt.resize(count_,0);
@@ -107,10 +55,31 @@ public:
       t=t>>1;
     }
     pos_++;
-    return true ;
+    return vc_[pos_] ;
   }
-
+  //把一个vector进行重新排列放入
+  void GetIterMaster(std::vector<uint32_t> &ibp , std::vector<std::vector<uint32_t>>& outp){
+      backtrack(outp,ibp,0);
+  }
 private:
+
+  void backtrack(std::vector<std::vector<uint32_t>>& res, std::vector<uint32_t>& input, uint32_t first){
+        // 所有数都填完了
+        uint32_t len=  input.size();
+        if (first == len) {
+            res.emplace_back(input);
+            return;
+        }
+        for (uint32_t i = first; i < len; ++i) {
+            // 动态维护数组
+            std::swap(input[i], input[first]);
+            // 继续递归填下一个数
+            backtrack(res, input, first + 1);
+            // 撤销操作
+            std::swap(input[i], input[first]);
+        }
+    }
+
   void dfs(std::set<int> &ans,uint32_t level,uint32_t begin, uint32_t val){
     //std::cout<<level<<" "<<begin<< " "<< val<<std::endl;
     if(level==0){
@@ -209,39 +178,53 @@ int main(){
   IterAllCase at(5,3);
   at.Init();
 
-  CicyleMove<ModFive> p1;
-  CicyleMove<ModFive> p2;
-
-  CicyleMove<ModFive> p;
-
   std::vector<uint32_t > mt;
   while(at.GetOneCase(mt)){
     //std::cout << VectorTransferToString(mt)<<std::endl;
     size_t i=0;
-    epaxos::InstanceSwap sp;
-
     uint32_t master = 0;
-    std::stringstream stt;
-    for(;i<mt.size();i++){
+    std::vector<std::vector<uint32_t>> allcase;
+
+    std::vector<uint32_t> rt;
+    for(i=0;i<mt.size();i++){
       if(mt[i]>0){
-        if(sp.GetInsID().IsNull()){
-          sp = gIns[i]->GenNewInstance(kv);
-          stt<<"[master:"<<i<<"] ";
-          master  = i;
-        }else{
-          epaxos::InstanceSwap tsp = sp.New();
-          gIns[i]->MutualManageIns(tsp);
-          stt << i <<" ";
-          std::cout<<"tsp i: "<<i<<" " <<tsp.GetDetailInfo()<<std::endl;
-          gIns[master]->ReFreshLocal(tsp);
-          std::cout << gIns[i]->DebugPrintInstanceNode() << std::endl;
-        }
+        rt.push_back(i);
       }
     }
+    at.GetIterMaster(rt,allcase);
+    /*
+      for (i=0;i< allcase.size();i++){
+        stt << PrintfVector(mt) << "  case: " << PrintfVector(allcase[i]) << std::endl;;
+      }
+      std::cout << stt.str()<<std::endl;
+      continue;
+    */
+    for(size_t j=0;j<allcase.size();j++){
+      std::stringstream stt;
+      epaxos::InstanceSwap sp;
+      for(i=0;i<allcase[j].size();i++){
+        int pos = allcase[j][i];
+        if(sp.GetInsID().IsNull()){
+          sp = gIns[pos]->GenNewInstance(kv);
+          stt<<"[master:"<<i<<"] ";
+          master  = i;
+          std::cout<<"source sp"<< sp.GetDetailInfo() << std::endl;
+        }else{
+          epaxos::InstanceSwap tsp = sp.New();
+          gIns[pos]->MutualManageIns(tsp);
+          stt << pos <<" ";
+          std::cout<<"tsp i: "<<pos<<" " <<tsp.GetDetailInfo()<<std::endl;
+          gIns[master]->ReFreshLocal(tsp);
+          std::cout << gIns[pos]->DebugPrintInstanceNode() << std::endl;
+        }
+      }
+      std::cout << "master :"<<master << stt.str() << gIns[master]->DebugPrintInstanceNode() << std::endl<< std::endl;
+    }
+   
   
     //master 反过来要更新本地的这个值
     //gIns[master]->MutualManageIns(sp);
-    std::cout << "master :"<<master << stt.str() << gIns[master]->DebugPrintInstanceNode() << std::endl<< std::endl;
+   
     //std::cout<< stt.str()<< " [pos:"<<i <<"] " << sp.GetDetailInfo()<< std::endl;
   }
   return 0;

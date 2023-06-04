@@ -17,11 +17,21 @@ class MutexSeqID : public IndexItem{
 public:
     MutexSeqID(IndexItem a):IndexItem(a){}
     MutexSeqID(){}
-    IfChange Update(const MutexSeqID &t ){
+    IfChange MutualUpdate(MutexSeqID &t){
         //lock 
-        return DoUpdate(t);
+        //先判断如果相同的话，更新对面的，如果不同的话
+        IfChange res = t.RefeshLocToAhead(*this);
+        
+        DoUpdate(t);
         //unlock
+        return res;
     }
+    IfChange Update(const MutexSeqID &a ){
+        //lock
+        DoUpdate(a);
+        return false;   
+    }
+
 private:
 };
 
@@ -57,7 +67,7 @@ public:
     IfChange Update(NodeID nid,const Instance &a);
 
     void RefreshSeqID(MutexSeqID s);
-    void RefreshDeps(NodeID nid, InsID t);
+    IfChange RefreshDeps(NodeID nid, InsID t);
     /**
      * @brief Get the Detail Info object 打印自身详情
      * 
@@ -68,6 +78,8 @@ public:
     InsID GetDepsID(NodeID &id)const{ return deps_.GetPosValue(id);}
 
     MutexSeqID GetSeqId()const{return seqid_;}
+
+    MutexSeqID & GetSeqIdReference() { return seqid_;}
 
 private:
     bool IsBehind(const Instance &a) const; //这个值是否落后
@@ -124,6 +136,16 @@ public:
         t.ins_ = std::make_shared<Instance>(*(this->ins_.get()));
         return t;
     }
+
+    IfChange UpdateDepsIns(NodeID nid, InsID t){
+        IfChange res;
+        if(t == GetInsID()){
+            return res;
+        }
+        res.Change();
+        ins_.get()->RefreshDeps(nid,t);
+        return res;
+    }
 private:
     std::shared_ptr<Instance> ins_;
 };
@@ -160,6 +182,9 @@ public:
     InsID GetMaxInsId()const {return curMaxInsId_;}
 
     std::string GetState()const;
+
+    IfChange MutualRefreshSwap(InstanceSwap & st);
+
 private:
     const Instance* GetLastOne() const;
 
@@ -188,7 +213,8 @@ public:
 
     std::string DebugPrintInstanceNode();
 
-    ResCode ReFreshLocal(const InstanceSwap &inswap);
+    ResCode ReFreshLocal(const InstanceSwap & inswap);
+
 private:
     IfChange MaxmumSeqID(MutexSeqID t){ return seq_.Update(t);}
 

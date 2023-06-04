@@ -34,10 +34,12 @@ public:
 
     IndexItem Inc(){return IndexItem(++idx_);}
 
+    //增加自己就好了，为什么要增加别人的 
     IfChange RefeshLocToAhead(const IndexItem & a){ bool res = a.idx_ >= idx_; idx_ = a.idx_ >= idx_ ? a.idx_+1 : idx_; return IfChange(res); }
     IfChange DoUpdate(const IndexItem & a){ bool res = a.idx_ > idx_; idx_ = a.idx_ > idx_ ? a.idx_ : idx_; return IfChange(res); }
 
     bool operator < (const IndexItem &a )const{return idx_ < a.idx_;}
+    bool operator == (const IndexItem &a )const{return idx_ == a.idx_;}
 
     bool IsNull(){return idx_==0;}
 
