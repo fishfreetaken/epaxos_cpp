@@ -30,9 +30,18 @@ IfChange Instance::RefreshDeps(NodeID nid, InsID t){
 IfChange Instance::Update(NodeID nid,const Instance & a){
     IfChange res;
     
-    res.Refresh(seqid_.RefeshLocToAhead(a.seqid_));
+    res.Refresh(seqid_.Update(a.seqid_));
 
     res.Refresh(deps_.UpdateArray(a.deps_));
+    return res;
+}
+
+bool Instance::operator ==(const Instance &a )const{
+    bool res = seqid_ == a.seqid_;
+    if(!res){ return res;}
+    res = state_ == a.state_;
+    if(!res){ return res;}
+    res= deps_ == a.deps_;
     return res;
 }
 
@@ -78,14 +87,6 @@ const Instance* InstanceCollector::GetLastOne()const{
 
 MutexSeqID InstanceCollector::RefreshFromLastIns(InstanceSwap & st)const {
     MutexSeqID res;
-    /*
-    const Instance *tp = GetLastOne();
-    if(tp == nullptr){
-        return res;
-    }
-    */
-    //获取最后一个insid
-    //st.GetChangeInsPtr()->Update(id_,*tp);
     st.GetMutalInsPtr()->RefreshDeps(id_,curMaxInsId_);
     return res;
 }
@@ -130,6 +131,39 @@ std::string InstanceCollector::GetState()const{
     return st.str();
 }
 
+InstanceSwap InstanceCollector::GetTragetIns(const InstanceSwap & inswap) const{
+    std::map<InsID,Instance*>::const_iterator iter =  clins_.find(inswap.GetInsID());
+    if(iter == clins_.end()){
+        assert(false);
+        return InstanceSwap();
+    } 
+    return InstanceSwap(id_,iter->first,iter->second);
+}
+
+std::string InstanceCollector::GetLocalInsIds()const{
+    std::stringstream st;
+    st <<"[Node: "<< id_.Value64() << " all inst CurMaxIns: "<<curMaxInsId_.Value64() << ":"<< std::endl;
+    for(auto iter=clins_.begin();iter!=clins_.end();iter++){
+        st <<"  insid:"<<iter->first.Value64() << " " << iter->second->DebugInfo()<<std::endl;
+    }
+    st<<"END]"<<std::endl;
+    return st.str();
+}
+
+std::string InstanceCollector::Include(const InstanceCollector &mt)const{
+    std::stringstream rest;
+    std::map<InsID,Instance*>::const_iterator iter = clins_.begin();
+    for (;iter != clins_.end();iter++){
+       std::map<InsID,Instance*>::const_iterator ist = mt.clins_.find(iter->first);
+       if(ist != mt.clins_.end()){
+            if (!(*ist->second == *iter->second)) {
+                rest<<"[not equal collectorID: "<< id_.Value64()<< " insID:" << iter->first.Value64()<<"]";
+            }
+       }
+    }
+    return rest.str();
+}
+
 InstanceNode::InstanceNode(NodeID t,NodeSize s):localNodeId_(t),seq_(0){
 
     assert(s.Value64()>0);
@@ -164,14 +198,6 @@ ResCode InstanceNode::ReFreshLocal(const InstanceSwap & inswap){
     return res;
 }
 
-ResCode InstanceNode::ReFreshRemote(InstanceSwap & inswap)const{
-    ResCode res;
-    inswap.GetMutalInsPtr()->RefreshSeqID(seq_);
-    std::for_each(inslist_.begin(),inslist_.end(),[&](const InstanceCollector &  ins){
-        ins.RefreshFromLastIns(inswap);
-    });
-    return res;
-}
 
 /**
  * @brief 如果不存在就插入，如果存在就更新本地，如果本地超前，就更新对方
@@ -181,6 +207,11 @@ ResCode InstanceNode::ReFreshRemote(InstanceSwap & inswap)const{
  */
 ResCode InstanceNode::MutualManageIns(InstanceSwap & inswap){
     epaxos::ResCode res;
+
+    //如果是本地的
+    if(inswap.GetNodeID() == localNodeId_) {
+        return ReFreshLocal(inswap);
+    }
     //更新max ins
     assert(inswap.GetNodeID().Value64() < inslist_.size());
 
@@ -222,7 +253,6 @@ InstanceSwap InstanceNode::GenNewInstance(const epaxos_client::OperationKVArray 
     return InstanceSwap(sp);
 }
 
-
 DepsIDs InstanceNode::GetArrDeps()const {
     DepsIDs res(GetArrSize());
     std::for_each(inslist_.begin(),inslist_.end(),[&](const InstanceCollector & ins){
@@ -233,13 +263,40 @@ DepsIDs InstanceNode::GetArrDeps()const {
 }
 
 
-std::string InstanceNode::DebugPrintInstanceNode(){
+std::string InstanceNode::DebugPrintInstanceNode()const{
     std::stringstream st;
     st<< "[CurNode: " << localNodeId_.Value64() << " MaxSeq: " << seq_.Value64()<<"] ";
     std::for_each(inslist_.begin(),inslist_.end(),[&st](const InstanceCollector &a ){
         st << a.GetState() <<" ";
     });
     return st.str();
+}
+
+std::string InstanceNode::GetAllCollectorInsInfo()const {
+    std::stringstream st;
+    st<< "[CurNode: " << localNodeId_.Value64() << " MaxSeq: " << seq_.Value64()<< std::endl;;
+    std::for_each(inslist_.begin(),inslist_.end(),[&](const InstanceCollector & a){
+        st <<"  "<< a.GetLocalInsIds();
+    });
+    st << " ]"<<std::endl;
+    return  st.str();
+}
+
+ResCode InstanceNode::Include(const InstanceNode &nd) const {
+    assert(inslist_.size()==nd.inslist_.size());
+    std::stringstream st;
+    size_t n = inslist_.size();
+    for(size_t i=0;i<n;i++){
+        std::string tmp = inslist_[i].Include(nd.inslist_[i]);
+        if(tmp.size() >0 ){
+            st << "[CurNode:"<< localNodeId_.Value64() << " compareid:"<<nd.localNodeId_.Value64() << "][subnode:" << inslist_[i].GetNodeID().Value64() << "]"<<tmp <<"]" << std::endl;
+        }
+    }
+    return ResCode(st.str());
+}
+
+epaxos::InstanceSwap InstanceNode::GetTargetIns(const InstanceSwap & inswap)const {
+    return  inslist_[inswap.GetNodeID().Value64()].GetTragetIns(inswap);
 }
 
 };

@@ -84,6 +84,17 @@ public:
 
     T GetPosValue(IndexValue idx) const { return vec_[idx.Value64()];}
 
+    bool operator == (const ArrayManage &a)const {
+        if(a.vec_.size()!=vec_.size()){
+            return false;
+        }
+        for(size_t i=0;i<vec_.size();i++){
+            if(!(vec_[i]==a.vec_[i])){
+                return false;
+            }
+        }
+        return true;
+    }
 private:
     std::vector<T> vec_;
 };

@@ -45,6 +45,7 @@ public:
 class DepsIDs : public ArrayManage<InsID>{
 public:
     DepsIDs(NodeSize s):ArrayManage<InsID>(s){}
+    
 };
 
 /**
@@ -80,6 +81,8 @@ public:
     MutexSeqID GetSeqId()const{return seqid_;}
 
     MutexSeqID & GetSeqIdReference() { return seqid_;}
+
+    bool operator ==(const Instance &a) const ;
 
 private:
     bool IsBehind(const Instance &a) const; //这个值是否落后
@@ -119,7 +122,6 @@ public:
         ins_ = a.ins_;
     }
     InstanceSwap():IdentifyIns(0,0){}
-    //InstanceSwap(NodeID nodeid,  Instance *a, const epaxos_client::OperationKVArray * pkv):IdentifyIns(nodeid,InsID(0)),ins_(a){}
 
     const Instance *GetInsPtr()const{return ins_.get();}
 
@@ -145,6 +147,14 @@ public:
         res.Change();
         ins_.get()->RefreshDeps(nid,t);
         return res;
+    }
+
+    const InstanceSwap & operator = (const InstanceSwap & a){
+        this->ch_ = a.ch_; 
+        this->fromNode_ = a.fromNode_;
+        this->insId_ = a.insId_;
+        ins_ = std::move(ins_);
+        return *this;
     }
 private:
     std::shared_ptr<Instance> ins_;
@@ -175,8 +185,6 @@ public:
 
     NodeID GetNodeID()const {return id_;}
 
-    IfChange RefreshLocalIns(const InstanceSwap & st);
-
     InstanceCollector  operator = (int t){return std::move(InstanceCollector(NodeID(t))); }
 
     InsID GetMaxInsId()const {return curMaxInsId_;}
@@ -184,6 +192,14 @@ public:
     std::string GetState()const;
 
     IfChange MutualRefreshSwap(InstanceSwap & st);
+
+    IfChange RefreshLocalIns(const InstanceSwap & st);
+
+    std::string GetLocalInsIds()const;
+
+    InstanceSwap GetTragetIns(const InstanceSwap & inswap) const;
+    //你有的我这里还有没有
+    std::string Include(const InstanceCollector &mt )const;
 
 private:
     const Instance* GetLastOne() const;
@@ -211,18 +227,20 @@ public:
      */
     ResCode MutualManageIns(InstanceSwap & inswap);
 
-    std::string DebugPrintInstanceNode();
-
     ResCode ReFreshLocal(const InstanceSwap & inswap);
 
-private:
-    IfChange MaxmumSeqID(MutexSeqID t){ return seq_.Update(t);}
+    std::string DebugPrintInstanceNode()const;
 
+    std::string GetAllCollectorInsInfo()const;
+
+    ResCode Include(const InstanceNode&nd)const;
+
+    epaxos::InstanceSwap GetTargetIns(const InstanceSwap & inswap)const ;
+
+private:
     NodeSize GetArrSize()const{ return NodeSize(inslist_.size());}  
 
     DepsIDs GetArrDeps()const;
-
-    ResCode ReFreshRemote(InstanceSwap & inswap) const;
 
     /**
      * @brief 插入或者更新本地，更新ins，更新seq

@@ -19,6 +19,7 @@ public:
     bool IsPreAccept();
 
     bool operator < (const WorkStatus &a)const { return state_ < a.state_;}
+    bool operator == (const WorkStatus &a)const { return state_ == a.state_;}
 
     bool Behand(const WorkStatus&a){ return a.state_ <= state_;}
     

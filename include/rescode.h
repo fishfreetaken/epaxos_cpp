@@ -25,6 +25,7 @@ class ResCode:public IfChange {
 public: 
     ResCode():iCode_(0){}
     ResCode(int i):iCode_(i){}
+    ResCode(std::string s):iCode_(0),strPromote(s){}
 
     std::string  GetRemote(){return strPromote;}
 
@@ -32,6 +33,12 @@ public:
         Refresh(c);
         //上报优先级更高的错误
         iCode_ = c.iCode_ >  iCode_ ? c.iCode_ : iCode_;
+    }
+    bool IsError(){
+        if((iCode_ !=0 )||(strPromote.size()>0)){
+            return true;
+        }
+        return false;
     }
 private:
     

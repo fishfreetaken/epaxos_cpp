@@ -8,7 +8,7 @@
 #include <ctime>
 
 #include <set>
-int uNodeNum = 5;
+size_t uNodeNum = 5;
 std::vector<epaxos::InstanceNode *> gIns;
 
 std::string PrintfVector(std::vector<uint32_t> & t){
@@ -54,8 +54,7 @@ public:
       s++;
       t=t>>1;
     }
-    pos_++;
-    return vc_[pos_] ;
+    return vc_[pos_++];
   }
   //把一个vector进行重新排列放入
   void GetIterMaster(std::vector<uint32_t> &ibp , std::vector<std::vector<uint32_t>>& outp){
@@ -155,32 +154,22 @@ void TestMutual2(){
 }
 
 int main(){
-  for(int i=0;i<uNodeNum;i++){
+  for(size_t i=0;i<uNodeNum;i++){
     gIns.push_back(new epaxos::InstanceNode(i,uNodeNum));
   }
   epaxos_client::OperationKVArray kv;
 
-  /*
-    epaxos::InstanceSwap sp = gIns[0]->GenNewInstance(kv);
-    epaxos::InstanceSwap sp1 = sp;
-
-    epaxos::InstanceSwap tsp = sp1.New();
-    std::cout<<sp.GetInsPtr()->DebugInfo() <<std::endl;
-    std::cout<<tsp.GetInsPtr()->DebugInfo() <<std::endl;
-    printf("addr:%lld addr %lld %lld \n",(unsigned long long )sp.GetInsPtr(),(unsigned long long )sp1.GetInsPtr(),(unsigned long long )tsp.GetInsPtr());
-
-    return 1;
-  */
-
   //TestMutual2();
   //return 1;
 
-  IterAllCase at(5,3);
+  IterAllCase at(uNodeNum,3);
   at.Init();
 
   std::vector<uint32_t > mt;
+
   while(at.GetOneCase(mt)){
     //std::cout << VectorTransferToString(mt)<<std::endl;
+
     size_t i=0;
     uint32_t master = 0;
     std::vector<std::vector<uint32_t>> allcase;
@@ -193,6 +182,7 @@ int main(){
     }
     at.GetIterMaster(rt,allcase);
     /*
+      std::stringstream stt;
       for (i=0;i< allcase.size();i++){
         stt << PrintfVector(mt) << "  case: " << PrintfVector(allcase[i]) << std::endl;;
       }
@@ -206,8 +196,8 @@ int main(){
         int pos = allcase[j][i];
         if(sp.GetInsID().IsNull()){
           sp = gIns[pos]->GenNewInstance(kv);
-          stt<<"[master:"<<i<<"] ";
-          master  = i;
+          stt<<"[master:"<<pos<<"] ";
+          master  = pos;
           std::cout<<"source sp"<< sp.GetDetailInfo() << std::endl;
         }else{
           epaxos::InstanceSwap tsp = sp.New();
@@ -218,14 +208,33 @@ int main(){
           std::cout << gIns[pos]->DebugPrintInstanceNode() << std::endl;
         }
       }
+      epaxos::InstanceSwap nesp = gIns[master]->GetTargetIns(sp);
+      for(i=0;i<allcase[j].size();i++){
+        size_t pos =allcase[j][i];
+        if(pos!=master){
+          gIns[pos]->ReFreshLocal(nesp);
+        }
+      }
       std::cout << "master :"<<master << stt.str() << gIns[master]->DebugPrintInstanceNode() << std::endl<< std::endl;
+     
+      std::cout<<std::endl;
     }
-   
-  
-    //master 反过来要更新本地的这个值
-    //gIns[master]->MutualManageIns(sp);
-   
-    //std::cout<< stt.str()<< " [pos:"<<i <<"] " << sp.GetDetailInfo()<< std::endl;
   }
+
+  //break;
+  for(size_t i=0;i<uNodeNum;i++){
+    std::cout << gIns[i]->GetAllCollectorInsInfo()<<std::endl;
+    for(size_t j=0;j<uNodeNum;j++){
+      if(i==j){
+        continue;
+      }
+      epaxos::ResCode res = gIns[i]->Include(*gIns[j]);
+      if (res.IsError()){
+        std::cout<<"[Warning  node not include :" << res.GetRemote() << std::endl;
+      }
+      
+    }
+  }
+   
   return 0;
 }
