@@ -166,7 +166,7 @@ int main(){
   at.Init();
 
   std::vector<uint32_t > mt;
-
+  size_t incSeq = 1;
   while(at.GetOneCase(mt)){
     //std::cout << VectorTransferToString(mt)<<std::endl;
 
@@ -216,8 +216,10 @@ int main(){
         }
       }
       std::cout << "master :"<<master << stt.str() << gIns[master]->DebugPrintInstanceNode() << std::endl<< std::endl;
-     
       std::cout<<std::endl;
+
+      assert(gIns[master]->GetSeq().Value64() == incSeq);
+      incSeq++;
     }
   }
 
@@ -231,6 +233,7 @@ int main(){
       epaxos::ResCode res = gIns[i]->Include(*gIns[j]);
       if (res.IsError()){
         std::cout<<"[Warning  node not include :" << res.GetRemote() << std::endl;
+        assert(false);
       }
       
     }

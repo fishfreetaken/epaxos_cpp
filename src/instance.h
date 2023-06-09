@@ -153,7 +153,7 @@ public:
         this->ch_ = a.ch_; 
         this->fromNode_ = a.fromNode_;
         this->insId_ = a.insId_;
-        ins_ = std::move(ins_);
+        ins_ = std::move(a.ins_);
         return *this;
     }
 private:
@@ -237,6 +237,7 @@ public:
 
     epaxos::InstanceSwap GetTargetIns(const InstanceSwap & inswap)const ;
 
+    MutexSeqID GetSeq()const{return seq_;}
 private:
     NodeSize GetArrSize()const{ return NodeSize(inslist_.size());}  
 
