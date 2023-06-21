@@ -241,8 +241,6 @@ ResCode InstanceNode::MutualManageIns(InstanceSwap & inswap){
  */
 InstanceSwap InstanceNode::GenNewInstance(const epaxos_client::OperationKVArray & arrvalues){
 
-    //自增insid并将所有kv事件写入硬盘
-    
     //获取seq和ins
     MutexSeqID tmpMaxSeq (seq_.Inc()); //and snapshot
     DepsIDs tmpDep = GetArrDeps();

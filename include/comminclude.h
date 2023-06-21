@@ -15,4 +15,5 @@
 #include <algorithm>
 #include "rescode.h"
 #include <memory>
+#include <numeric>
 #endif
