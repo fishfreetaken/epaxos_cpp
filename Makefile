@@ -9,10 +9,19 @@ TARGET=test
 DIRS= src remote .
 
 FILES = $(foreach dir,$(DIRS),$(wildcard $(dir)/*.cpp))
+HFILES = $(foreach dir,$(DIRS),$(wildcard $(dir)/*.h))
 
 OBJS = $(patsubst %.cpp,%.o, $(FILES))
 
-LOG =loc
+#all_o_depds = $(patsubst %.o, %.o.d, $(FILES))
+
+LOG = loc
+
+#-include $(all_o_depds)
+
+LIBS = -lpthread -lm
+$(TARGET):$(OBJS)
+	$(CXX) $(CFLAGS) $(LIBS) $(OBJS)  -o $@ 
 
 .cpp.o:
 	$(CXX) -c $(CFLAGS) $< -o $@
@@ -20,9 +29,8 @@ LOG =loc
 .c.o:
 	$(CXX) -c  $(CFLAGS)  $< -o $@
 
-LIBS = -lpthread -lm
-$(TARGET):$(OBJS)
-	$(CXX) $(CFLAGS) $(LIBS) $(OBJS)  -o $@ 
+
+
 #SRC=$(wildcard *.cpp)
 
 #include remote/submakefile.mk 

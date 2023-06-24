@@ -66,7 +66,7 @@ public:
         assert(vec_.size()==t.vec_.size());
         IfChange change;
         for(size_t i=0;i<vec_.size();i++ ){
-            IfChange ttmp =  vec_.at(i).DoUpdate(t.vec_.at(i));
+            IfChange ttmp = vec_.at(i).DoUpdate(t.vec_.at(i));
             change.Refresh(ttmp);
         }
         return change;

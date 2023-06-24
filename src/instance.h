@@ -102,7 +102,7 @@ public:
 protected:
     std::string GetIdentifyInfo(){
         std::stringstream st;
-        st<<"[NodeID:"<<fromNode_.Value64()<<"]" <<" [InsId:" << insId_.Value64()<<"]";
+        st<<"[FromNodeID:"<<fromNode_.Value64()<<"]" <<" [InsId:" << insId_.Value64()<<"]";
         return st.str();
     }
 protected:
@@ -114,20 +114,22 @@ protected:
 
 class InstanceSwap : public IdentifyIns{
 public:
-    InstanceSwap(NodeID nodeid,  InsID insid ,const Instance *a):IdentifyIns(nodeid,insid){
-        ins_ = std::make_shared<Instance> (*a);
+    InstanceSwap(NodeID nodeid,  InsID insid ,const Instance *a):IdentifyIns(nodeid,insid),toNode_(nodeid){
+        if (a != nullptr) {
+            ins_ = std::make_shared<Instance> (*a);
+        }
     }
 
-    InstanceSwap(const InstanceSwap &a ):IdentifyIns(a){
+    InstanceSwap(const InstanceSwap &a ):IdentifyIns(a),toNode_(a.toNode_){
         ins_ = a.ins_;
     }
-    InstanceSwap():IdentifyIns(0,0){}
+    InstanceSwap():IdentifyIns(0,0),toNode_(0){}
 
     const Instance *GetInsPtr()const{return ins_.get();}
 
     std::string GetDetailInfo(){
          std::stringstream st;
-         st << GetIdentifyInfo() << ins_->DebugInfo();
+         st << "[ToNode:" <<  toNode_.Value64() <<"] " << GetIdentifyInfo() << ins_->DebugInfo();
          return st.str();
     }
 
@@ -140,24 +142,25 @@ public:
     }
 
     IfChange UpdateDepsIns(NodeID nid, InsID t){
-        IfChange res;
-        if(t == GetInsID()){
-            return res;
-        }
-        res.Change();
         ins_.get()->RefreshDeps(nid,t);
-        return res;
+        return IfChange(true);
     }
 
     const InstanceSwap & operator = (const InstanceSwap & a){
         this->ch_ = a.ch_; 
         this->fromNode_ = a.fromNode_;
         this->insId_ = a.insId_;
+        this->toNode_  = a.toNode_;
         ins_ = std::move(a.ins_);
         return *this;
     }
+    void SetToNode(const NodeID&to ){
+        toNode_ = to;
+    }
+
 private:
     std::shared_ptr<Instance> ins_;
+    NodeID toNode_;
 };
 
 
@@ -225,7 +228,7 @@ public:
      * 
      * @return ResCode 
      */
-    ResCode MutualManageIns(InstanceSwap & inswap);
+    ResCode PreAccept(InstanceSwap & inswap);
 
     ResCode ReFreshLocal(const InstanceSwap & inswap);
 

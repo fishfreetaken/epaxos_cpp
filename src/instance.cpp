@@ -62,6 +62,11 @@ std::string Instance::DebugInfo()const{
 
 ResCode InstanceCollector::InsertAndUpdate(const InstanceSwap &ins){
     //插入不能时本地的node
+    ResCode res(0);
+    if (!(curMaxInsId_ < ins.GetInsID())) {
+        curMaxInsId_.DoUpdate(ins.GetInsID());
+        res.SetExist();
+    }
     auto iter = clins_.find(ins.GetInsID());
     if(iter != clins_.end()){
         iter->second->Update(ins.GetNodeID(),*ins.GetInsPtr());
@@ -69,9 +74,7 @@ ResCode InstanceCollector::InsertAndUpdate(const InstanceSwap &ins){
         //这里插入一个值
         clins_[ins.GetInsID()] = new Instance(*ins.GetInsPtr());
     }
-    
-    curMaxInsId_.DoUpdate(ins.GetInsID());
-    return  ResCode(0);
+    return  res;
 }
 
 
@@ -118,9 +121,9 @@ IfChange InstanceCollector::RefreshLocalIns(const InstanceSwap & st){
 
 IfChange InstanceCollector::MutualRefreshSwap(InstanceSwap & st){
     IfChange res = RefreshLocalIns(st);
-    if (!res.IsChange() ){
-        st.UpdateDepsIns(id_,curMaxInsId_);
-    }
+    st.UpdateDepsIns(id_,curMaxInsId_);
+
+    std::cout<< "InstanceCollector: " << id_.Value64()<< " maxins:" << curMaxInsId_.Value64()<< " SWAP:" << st.GetDetailInfo()<<std::endl;
     return res;
 }
 
@@ -182,6 +185,7 @@ InstanceNode::InstanceNode(NodeID t,NodeSize s):localNodeId_(t),seq_(0){
 ResCode InstanceNode::ReFreshLocal(const InstanceSwap & inswap){
     ResCode res(0);
 
+    //如果ins已经存在，就直接更新seq和本地的ins
     //更新max ins
     assert(inswap.GetNodeID().Value64() < inslist_.size());
 
@@ -205,7 +209,7 @@ ResCode InstanceNode::ReFreshLocal(const InstanceSwap & inswap){
  * @param inswap 
  * @return ResCode 
  */
-ResCode InstanceNode::MutualManageIns(InstanceSwap & inswap){
+ResCode InstanceNode::PreAccept(InstanceSwap & inswap){
     epaxos::ResCode res;
 
     //如果是本地的
@@ -220,15 +224,29 @@ ResCode InstanceNode::MutualManageIns(InstanceSwap & inswap){
 
     //dep也需要更新到所有inslis节点上
     std::for_each(inslist_.begin(),inslist_.end(),[&](InstanceCollector & ins){
+        if(inswap.GetNodeID() == ins.GetNodeID()){
+            return;
+        }
         res.Refresh(ins.MutualRefreshSwap(inswap));
     });
 
     if(res.IsChange()){
          //落盘 todo
     }
+
+    inswap.SetToNode(localNodeId_);
+
+    //如果本地存在，就更新最大seq，不需要得到最新的
     
     //seq 先去更新本地，如果进入的没有发生变化，我再去更新你的
-    seq_.MutualUpdate(inswap.GetMutalInsPtr()->GetSeqIdReference());
+    if(res.IsExist()){
+        std::cout<<"PreAccept" << localNodeId_.Value64() << " exist"<<std::endl;
+        seq_.Update(inswap.GetInsPtr()->GetSeqId());
+    } else {
+
+        std::cout<<"PreAccept " << localNodeId_.Value64() << " not exist"<<std::endl;
+        seq_.MutualUpdate(inswap.GetMutalInsPtr()->GetSeqIdReference());
+    }
     return res;
 }
 
