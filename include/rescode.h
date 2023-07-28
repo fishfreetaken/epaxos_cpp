@@ -2,7 +2,7 @@
 
 #ifndef __EPAXOS_INCLUE_RESCODE__
 #define __EPAXOS_INCLUE_RESCODE__
-#include "comminclude.h"
+#include <string>
 namespace epaxos {
 
 class IfChange{
@@ -16,6 +16,12 @@ public:
     void Change(){ val_ = true;}
 
     bool Value()const{ return val_;}
+    const IfChange& operator =(const IfChange &a){
+        if(a.val_){
+            val_ = true;
+        }
+        return *this; 
+    }
 private:
     bool val_;
 };
@@ -50,6 +56,7 @@ private:
     enum emInstanceCodeState{
         EM_INS_STATE_EXIST = 1, //0 not EXIST
     };
+
     //new instance 
     int iCode_;             //错误码
     uint32_t state_;

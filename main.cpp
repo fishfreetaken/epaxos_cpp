@@ -15,8 +15,8 @@ void TestMutual1(){
 
   epaxos::DepsIDs dp(uNodeNum);
 
-  dp.UpdateOne(1,1);
-  dp.UpdateOne(4,1);
+  dp.UpdateOne(1,epaxos::DepId(1));
+  dp.UpdateOne(4,epaxos::DepId(2));
 
   epaxos::Instance *ins=  new epaxos::Instance(dp,epaxos::MutexSeqID(1),kv);
 
@@ -127,8 +127,15 @@ void TestSingleCas() {
   }
 }
 
+void PrintallNodeState(){
+  for(size_t t=0;t<uNodeNum;t++){
+    std::cout << gIns[t]->DebugPrintInstanceNode() << std::endl;
+  }
+  std::cout<< "===========================I am cut line==========================="<< std::endl;
+}
+
 //#define TEST_CASH_NODE 1
-#define TEST_INSTANCE_SWAP 2
+//#define TEST_INSTANCE_SWAP 2
 int main(){
 
   for(size_t i=0;i<uNodeNum;i++){
@@ -197,8 +204,12 @@ int main(){
 
       epaxos::InstanceSwap *sp0 = new epaxos::InstanceSwap(gIns[0]->GenNewInstance(kv));
       epaxos::InstanceSwap *sp1 = new epaxos::InstanceSwap(gIns[1]->GenNewInstance(kv));
+      epaxos::InstanceSwap *sp2 = new epaxos::InstanceSwap(gIns[2]->GenNewInstance(kv));
+      
       epaxos::InstanceSwap tsp0 = sp0->New();
       epaxos::InstanceSwap tsp1 = sp1->New();
+      epaxos::InstanceSwap tsp2 = sp2->New();
+  
       gIns[1]->PreAccept(tsp0);
       gIns[0]->ReFreshLocal(tsp0); //这个更新本身
 
@@ -208,73 +219,82 @@ int main(){
       gIns[1]->ReFreshLocal(tsp1); //这个更新本身
       std::cout << tsp1.GetDetailInfo() << " | " << gIns[0]->DebugPrintInstanceNode() << " || " << gIns[1]->DebugPrintInstanceNode()<<std::endl;
 
+      gIns[0]->PreAccept(tsp2);
+      gIns[2]->ReFreshLocal(tsp2); //这个更新本身
+      std::cout << tsp2.GetDetailInfo() << " | " << gIns[0]->DebugPrintInstanceNode() << " || " << gIns[2]->DebugPrintInstanceNode()<<std::endl;
+
       epaxos::InstanceSwap tf1(0,1,nullptr);
       epaxos::InstanceSwap tf2(1,1,nullptr);
+      epaxos::InstanceSwap tf3(2,1,nullptr);
 
       std::cout<< gIns[0]->GetTargetIns(tf1).GetDetailInfo() << " || "<< gIns[1]->GetTargetIns(tf1).GetDetailInfo() <<std::endl;
 
       std::cout<< gIns[0]->GetTargetIns(tf2).GetDetailInfo() << " || "<< gIns[1]->GetTargetIns(tf2).GetDetailInfo() <<std::endl;
 
+      std::cout<< gIns[0]->GetTargetIns(tf3).GetDetailInfo() << " || "<< gIns[2]->GetTargetIns(tf3).GetDetailInfo() <<std::endl;
     return 1;
   #endif
 
-  size_t subNum = uNodeNum/2 +1;
- 
-  epaxos_test::IterAllCase at(uNodeNum,subNum); // 5 选 3 
+  size_t reciverNum = uNodeNum/2 +1;
   size_t writerNum = 2;
+ 
+  epaxos_test::IterAllCase at(uNodeNum,reciverNum); // 5 选 3 
+
   epaxos_test::IterAllCase wrieterCase(uNodeNum,writerNum); //5 / 2
 
-  //对case进行重排列
-  std::vector<uint32_t> writerOneCases;
-  while(wrieterCase.GetOneCase(writerOneCases)){ // 0 1; 0 2; 0 3; 0 4; 0 5;
-      //选出writer
-      std::cout<< "writer:" << PrintfVector(writerOneCases)<<std::endl;
-      epaxos_test::WorkManager wm(writerOneCases);
-      at.reset();
-      while(1){
-        std::vector<std::vector<uint32_t>> receiverOneCase;
-        for(size_t i=0;i<writerOneCases.size();i++) { //10 个
-          std::vector<uint32_t> tmp;
-          if(at.GetOneCase(tmp)==0){
-            break;
-          }
-          receiverOneCase.push_back(tmp);
-        }
-        if (receiverOneCase.size()==0){
-          std::cout<<"recive One Case null"<<std::endl;
-          break;
-        }
-        std::cout<< "reciever:" << PrintfVector(receiverOneCase)<<std::endl;
-        
-        std::vector<epaxos_test::Case_Node> tmpl;
-        wm.Init(receiverOneCase ,tmpl); //前一个随机出来一个排列后再插入一个新的排列
-        
-        epaxos_test::Iter_all_cases<epaxos_test::Case_Node> mt(tmpl);
-        size_t segNum = mt.InitSeg();
-        std::cout << "init seg num:"<<  segNum << " workmanager:" << wm.GetDetail() << std::endl;
-        std::vector<epaxos_test::Case_Node> *st;
-        size_t count=0;
-        while( nullptr != (st=mt.GetOneCase())){
-          std::cout << PrintfVectorN<epaxos_test::Case_Node>(*st)<<"detail swap:"<<std::endl;
-          std::for_each(st->begin(),st->end(),[&wm](const epaxos_test::Case_Node & pos){
-              epaxos::InstanceSwap sp =  wm.StepAt(pos.Value());
-              std::cout<< sp.GetDetailInfo()<<std::endl;
-          });
-          count++;
-          std::cout << std::endl;
-          if(count < 2){
-            break;
-          }
-        }
-        break;
-      }
-      std::cout <<"==========================================="<<std::endl;
-      break;
+  std::vector<epaxos_test::Case_Node> tmpl;
+  
+  for(size_t i=0;i<writerNum;i++){
+    tmpl.emplace_back(epaxos_test::Case_Node(i,i*(1+reciverNum)+1));
   }
-  for(size_t t=0;t<uNodeNum;t++){
-    std::cout << "master :"<< t<< gIns[t]->DebugPrintInstanceNode() << std::endl;
+  for(size_t i=0;i <writerNum ;i++){
+    for(size_t j=0;j<reciverNum;j++){
+      tmpl.emplace_back(epaxos_test::Case_Node(i*reciverNum + j + writerNum));
+    }
   }
 
+  epaxos_test::Iter_all_cases<epaxos_test::Case_Node> mt(tmpl);
+  std::vector<epaxos_test::Case_Node> *allcaseIterVector;
+
+  size_t segNum = mt.InitSeg();
+  std::cout << "init seg num:"<<  segNum << std::endl<<std::endl;;
+
+  size_t count =0 ;
+  //遍历每一种情况
+  while( nullptr != (allcaseIterVector=mt.GetOneCase())){ //有一千多种case
+    //write case
+    std::vector<uint32_t> writerOneCases;
+    if(wrieterCase.GetOneCase(writerOneCases) == 0){
+      continue;
+    }
+    std::vector<std::vector<uint32_t>> receiverOneCase;
+    for(size_t i=0;i<writerOneCases.size();i++) { //10个
+      std::vector<uint32_t> tmp;
+      if(at.GetOneCase(tmp)==0){
+        break;
+      }
+      receiverOneCase.push_back(tmp);
+    }
+    if(receiverOneCase.size() < writerOneCases.size() ){
+      continue;
+    }
+    epaxos_test::WorkManager wm(writerOneCases,receiverOneCase);
+
+    std::for_each(allcaseIterVector->begin(),allcaseIterVector->end(),[&wm](const epaxos_test::Case_Node & pos){
+        epaxos::InstanceSwap sp = wm.StepAt(pos.Value());
+        //std::cout<< "allcaseIterVector: " << sp.GetDetailInfo()<<std::endl;
+    });
+    std::cout << "write cases: " << PrintfVector(writerOneCases) << std::endl;
+    std::cout << "recive cases:" << PrintfVector(receiverOneCase) << std::endl;
+    std::cout<< "allcase iter: " << PrintfVectorN(*allcaseIterVector) <<std::endl;
+    PrintallNodeState();
+    if(count > 5){
+      break;
+    }
+    count++;
+  }
+  
   std::cout << "over" <<std::endl;
   return 0;
 }
+

@@ -26,7 +26,15 @@ std::string PrintfVector(const std::vector<uint32_t> & t){
 std::string PrintfVector(std::vector<std::vector<uint32_t>> & t){
   std::stringstream sst; 
   std::for_each(t.begin(),t.end(),[&sst](const std::vector<uint32_t> & mt){
-      sst <<" "<< PrintfVector(mt)<<std::endl;
+      sst <<" "<< PrintfVector(mt)<<" ";
+  }); 
+  return sst.str();
+}
+
+std::string PrintfVectorNewline(std::vector<std::vector<uint32_t>> & t){
+  std::stringstream sst; 
+  std::for_each(t.begin(),t.end(),[&sst](const std::vector<uint32_t> & mt){
+      sst <<" "<< PrintfVector(mt)<< std::endl;
   }); 
   return sst.str();
 }

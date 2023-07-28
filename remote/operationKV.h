@@ -6,42 +6,39 @@
 #include <string>
 #include "../include/rescode.h"
 
+#include "../include/storage_tranfer.h"
+#include "../include/opvalue.h"
+
 namespace epaxos_client{
 
-enum emOperationType{
-    SET = 1,
-    DEL = 2,
-    GET = 3,
-    CGET = 4,
-    CSET = 5,
-};
-
-class OperationKV{
+class OperationKV: public epaxos::StMemoryItem  {
 public:
     OperationKV(std::string value):value_(value),op_(SET),version_(0){}
-    OperationKV(std::string value,emOperationType op):value_(value),op_(op),version_(0){}
 
-    void SetOpToDel(){op_=DEL;}
-    void SetOpToGet(){op_=GET;}
-
-    void SetCOpToGet(uint32_t v){op_=CGET; version_= v;}
-    void SetCOpToSet(uint32_t v){op_=CSET; version_= v;}
+    std::string GetKey()const {return key_;} ;
+    epaxos::ResCode Encode(std::string &a)const {return epaxos::ResCode(0);} 
+    epaxos::ResCode Decode(const std::string & v) { return epaxos::ResCode(0); } 
 
 private:
-    std::string value_;
-    emOperationType op_;
+    std::string key_;
+    epaxos::OpValue value_;
+    
     uint32_t version_;
 };
 
-class OperationKVArray {
+class OperationKVArray : public epaxos::StMemoryItemsArry {
 public:
     epaxos::ResCode InsertOne(std::string key, OperationKV & one);
+
     int GetArrKeys(std::vector<std::string> &keys) const;
+
 private:
     std::unordered_map<std::string,std::vector<OperationKV> > arr_;
 
     std::string uniqid_;
 };
+
+
 };
 
 

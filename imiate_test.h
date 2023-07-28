@@ -65,7 +65,7 @@ public:
        gIns[c_.GetNodeId()]->PreAccept(sp);
        gIns[w_->GetNodeId()]->ReFreshLocal(sp);
 
-       std::cout<< w_->GetNodeId() << c_.GetNodeId() << gIns[w_->GetNodeId()]->DebugPrintInstanceNode()<<"[swap:]"<<sp.GetDetailInfo()<<std::endl;
+       //std::cout<< w_->GetNodeId() << c_.GetNodeId() << gIns[w_->GetNodeId()]->DebugPrintInstanceNode()<<"[swap:]"<<sp.GetDetailInfo()<<std::endl;
        return sp;
     }
 
@@ -84,6 +84,18 @@ public:
     WorkManager(std::vector<uint32_t> &writer ){
         std::copy(writer.begin(),writer.end(), std::back_inserter(wr_));
     }
+    WorkManager(std::vector<uint32_t> &writer,std::vector<std::vector<uint32_t>> &recivers ){
+        assert(recivers.size()>= writer.size());
+        std::copy(writer.begin(),writer.end(), std::back_inserter(wr_));
+        for(size_t i = 0;i<wr_.size();i++){
+            vec_.push_back(WorkPair(&wr_[i],wr_[i].Value()));
+        }
+        for(size_t i=0;i <wr_.size() ;i++){
+            for(size_t j=0;j<recivers[i].size();j++){
+                vec_.push_back(WorkPair(&wr_[i],recivers[i][j]));
+            }
+        }
+    }
     /**
      * @brief 选择其中两个以上的writer，进行交换信息，选择三个case进行接受信息
      * 
@@ -93,10 +105,11 @@ public:
     uint32_t Init(std::vector<std::vector<uint32_t>> & recivers,std::vector<epaxos_test::Case_Node> &csn){ //生产者的数量
         // selectwrite.size() + suballcases.size()
         size_t offset= recivers[0].size();
+        vec_.clear();
         for(size_t i = 0;i<wr_.size();i++){
             vec_.push_back(WorkPair(&wr_[i],wr_[i].Value()));
             csn.emplace_back(epaxos_test::Case_Node(i,i*(1+offset)+1));
-            std::cout<<"workmanager init :"<<i<<" " << i*(1+offset)+1<< std::endl;
+           // std::cout<<"workmanager init :"<<i<<" " << i*(1+offset)+1<< std::endl;
         }
         size_t mov = csn.size();
         for(size_t i=0;i <wr_.size() ;i++){
@@ -104,13 +117,14 @@ public:
                 vec_.push_back(WorkPair(&wr_[i],recivers[i][j]));
                 csn.emplace_back(epaxos_test::Case_Node( i*offset + j + mov));
 
-                std::cout<<"workmanager init :"<<offset<<" " << i*offset + j + mov<< std::endl;
+             //   std::cout<<"workmanager init :"<<offset<<" " << i*offset + j + mov<< std::endl;
             }
         }
         //将vec进行打乱来得到一个全排列
         return csn.size();
     }
     epaxos::InstanceSwap StepAt(size_t i ){
+        assert(i< vec_.size());
         return vec_[i].SwapMsg();
     }
     void Reset(){

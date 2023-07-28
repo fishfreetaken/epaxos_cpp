@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package epxos_instance_proto;
+
+message EpNodeId {
+    uint32 id = 1;
+};
+
+message EnNodeInfo{
+    EpNodeId iID            =1;
+    string ip               =2;
+    int32 port              =3;
+    optional string name    =4;
+};
+
+
+//本地的insid，需要经常进行更新
+message LocalInstanceId{
+    uint64 iID =1;  // 本地唯一的id
+};
+
+
+// 本地集群的初始化配置，只需要都多写少
+message EpGlobalConf{
+    EpNodeId local_nodeid           =1;
+    repeated EnNodeInfo node_list   =2;
+    repeated EpNodeId fast_gp_list  =3; //快速提交的队列
+};

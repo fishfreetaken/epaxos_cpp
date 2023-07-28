@@ -3,264 +3,80 @@
 #ifndef __EPAXOS_INSTANCE__
 #define __EPAXOS_INSTANCE__
 
-#include "../remote/operationKV.h"
 #include "../include/comminclude.h"
 #include "status.h"
-#include "../include/nodecfg.h"
-#include "rescode.h"
-#include "cluster.h"
-#include "../include/arraymanage.h"
+
+#include "../include/rescode.h"
+
+#include "../include/storage_tranfer.h"
+
+#include "instance.pb.h"
 
 namespace epaxos {
 
-class MutexSeqID : public IndexItem{
+class BatchGetKvValueArray : public StMemoryItemsArry {
+
 public:
-    MutexSeqID(IndexItem a):IndexItem(a){}
-    MutexSeqID(){}
-    IfChange MutualUpdate(MutexSeqID &t){
-        //lock 
-        //先判断如果相同的话，更新对面的，如果不同的话
-        IfChange res = t.RefeshLocToAhead(*this);
-        
-        DoUpdate(t);
-        //unlock
-        return res;
-    }
-    IfChange Update(const MutexSeqID &a ){
-        //lock
-        DoUpdate(a);
-        return false;   
-    }
+    BatchGetKvValueArray(){}
+
+    ResCode ParseReq(const epxos_instance_proto::EpaxosInsWriteReq &pm_);
+
+    ResCode BatchDecode(std::map<std::string,std::string> & mk);     //批量解码 
+
+    ResCode BatchEncode(std::map<std::string,std::string> &mk)const; //批量加密
+
+    //const
+    void GetKeys(std::map<std::string,std::string> & mk)const;
+
+    ResCode MergeGetNewIns(epxos_instance_proto::EpInstance*p); //融合生成一个新的ins
 
 private:
+    std::unordered_map<std::string , epxos_instance_proto::EpValueStorageBody> mep;
 };
 
-//只能单调递增
-class InsID : public IndexItem {
+class InstanceNode{
 public:
-    InsID(uint64_t a):IndexItem(a){}
-    InsID():IndexItem(){}
-};
+    InstanceNode(){}    //从db中直接解析，或者直接拿到id
+    InstanceNode(epxos_instance_proto::EpInstance & a):ins_(a){}
 
-class DepsIDs : public ArrayManage<InsID>{
-public:
-    DepsIDs(NodeSize s):ArrayManage<InsID>(s){}
-    
-};
+    ResCode InitLocalIns(std::string &body);
 
-/**
- * @brief 通过insid进行索引
- * 
- */
-class Instance {
-public:
-    Instance(const DepsIDs& s, MutexSeqID seqid , const epaxos_client::OperationKVArray & arrvalues);
-    Instance(const Instance & a);
-    ~Instance(){
-        //std::cout<<"descrpter "<< seqid_.Value64() << std::endl;
-    }
+    ResCode step(epxos_instance_proto::EpInstance *ins);
 
-    /**
-     * @brief 更新本提议的seq值，同时插入并更新当前deps
-     * 
-     * @param ins 
-     */
-    IfChange Update(NodeID nid,const Instance &a);
-
-    void RefreshSeqID(MutexSeqID s);
-    IfChange RefreshDeps(NodeID nid, InsID t);
-    /**
-     * @brief Get the Detail Info object 打印自身详情
-     * 
-     * @return std::string 
-     */
-    std::string DebugInfo()const;
-
-    InsID GetDepsID(NodeID &id)const{ return deps_.GetPosValue(id);}
-
-    MutexSeqID GetSeqId()const{return seqid_;}
-
-    MutexSeqID & GetSeqIdReference() { return seqid_;}
-
-    bool operator ==(const Instance &a) const ;
+    ResCode step_ack(const epxos_instance_proto::EpInstance & ins);
 
 private:
-    bool IsBehind(const Instance &a) const; //这个值是否落后
+    ResCode PreAccept();
+    ResCode Accept();
+    ResCode Commit();
+
+    ResCode PreAccept_Ack();
+    ResCode Accept_Ack();
+
 private:
-    MutexSeqID seqid_;                                  //全局唯一
-    WorkStatus state_;                                  //状态
-    std::vector<std::string> arrkeys_;                  //根据key+instID索引请求的value
-    DepsIDs deps_;                                      //依赖 insid
+    bool CanCommit();
+
+private:
+    epxos_instance_proto::EpInstance ins_;
 };
 
-class IdentifyIns {
-public: 
-    IdentifyIns(NodeID nodeid,  InsID insid ):fromNode_(nodeid),insId_(insid){}
-    NodeID GetNodeID() const{ return fromNode_;}
-    InsID GetInsID() const { return insId_;}
-
-protected:
-    std::string GetIdentifyInfo(){
-        std::stringstream st;
-        st<<"[FromNodeID:"<<fromNode_.Value64()<<"]" <<" [InsId:" << insId_.Value64()<<"]";
-        return st.str();
-    }
-protected:
-    NodeID fromNode_;
-    InsID insId_;
-    IfChange ch_;
-};
-
-
-class InstanceSwap : public IdentifyIns{
+class InstanceManager {
 public:
-    InstanceSwap(NodeID nodeid,  InsID insid ,const Instance *a):IdentifyIns(nodeid,insid),toNode_(nodeid){
-        if (a != nullptr) {
-            ins_ = std::make_shared<Instance> (*a);
-        }
-    }
-
-    InstanceSwap(const InstanceSwap &a ):IdentifyIns(a),toNode_(a.toNode_){
-        ins_ = a.ins_;
-    }
-    InstanceSwap():IdentifyIns(0,0),toNode_(0){}
-
-    const Instance *GetInsPtr()const{return ins_.get();}
-
-    std::string GetDetailInfo(){
-         std::stringstream st;
-         st << "[ToNode:" <<  toNode_.Value64() <<"] " << GetIdentifyInfo() << ins_->DebugInfo();
-         return st.str();
-    }
-
-    std::shared_ptr<Instance> GetMutalInsPtr(){return ins_;}
-
-    InstanceSwap New() {
-        InstanceSwap t(*this);
-        t.ins_ = std::make_shared<Instance>(*(this->ins_.get()));
-        return t;
-    }
-
-    IfChange UpdateDepsIns(NodeID nid, InsID t){
-        ins_.get()->RefreshDeps(nid,t);
-        return IfChange(true);
-    }
-
-    const InstanceSwap & operator = (const InstanceSwap & a){
-        this->ch_ = a.ch_; 
-        this->fromNode_ = a.fromNode_;
-        this->insId_ = a.insId_;
-        this->toNode_  = a.toNode_;
-        ins_ = std::move(a.ins_);
-        return *this;
-    }
-    void SetToNode(const NodeID&to ){
-        toNode_ = to;
-    }
-
-private:
-    std::shared_ptr<Instance> ins_;
-    NodeID toNode_;
-};
-
-
-class InstanceCollector {
-public:
-    InstanceCollector(NodeID i):id_(i.Value64()){}
-
-    /**
-     * @brief 插入新的ins 带有一定的淘汰策略，必须先落盘
-     * 
-     * @param ins 
-     * @return ResCode 
-     */
-    ResCode InsertAndUpdate(const InstanceSwap & ins);
-
-    /**
-     * @brief 从本地更新外来的值
-     * 
-     * @param st 
-     * @return IfChange 
-     */
-    MutexSeqID RefreshFromLastIns(InstanceSwap & st)const;
-
-    InstanceSwap GenOne(const DepsIDs& s, MutexSeqID seqid , const epaxos_client::OperationKVArray & arrvalues);
-
-    NodeID GetNodeID()const {return id_;}
-
-    InstanceCollector  operator = (int t){return std::move(InstanceCollector(NodeID(t))); }
-
-    InsID GetMaxInsId()const {return curMaxInsId_;}
-
-    std::string GetState()const;
-
-    IfChange MutualRefreshSwap(InstanceSwap & st);
-
-    IfChange RefreshLocalIns(const InstanceSwap & st);
-
-    std::string GetLocalInsIds()const;
-
-    InstanceSwap GetTragetIns(const InstanceSwap & inswap) const;
-    //你有的我这里还有没有
-    std::string Include(const InstanceCollector &mt )const;
-
-private:
-    const Instance* GetLastOne() const;
-
-private:
-    InsID curMaxInsId_;  //原子自增
-    NodeID id_;
-
-    //lru cache
-    std::map<InsID,Instance*> clins_; //有序队列，快速索引查找
-};
-
-class InstanceNode {
-public:
-    InstanceNode(NodeID t,NodeSize s); //本地的node
+    InstanceManager(epxos_instance_proto::EpGlobalConf *p); //本地的node
 
     //生成inst事件并保存本地
-    InstanceSwap GenNewInstance(const epaxos_client::OperationKVArray & arrvalues);
+    ResCode GenNewInstance(const epxos_instance_proto::EpaxosInsWriteReq & arrvalues,
+    epxos_instance_proto::InstanceSwapMsg &rspmsg);
 
-    /**
-     * @brief 从其他node同步写入进来，如果不存在就插入，如果存在就更新本地，同时也要对这个值进行更新
-     * 只更新，不前进
-     * 
-     * @return ResCode 
-     */
-    ResCode PreAccept(InstanceSwap & inswap);
-
-    ResCode ReFreshLocal(const InstanceSwap & inswap);
-
-    std::string DebugPrintInstanceNode()const;
-
-    std::string GetAllCollectorInsInfo()const;
-
-    ResCode Include(const InstanceNode&nd)const;
-
-    epaxos::InstanceSwap GetTargetIns(const InstanceSwap & inswap)const ;
-
-    MutexSeqID GetSeq()const{return seq_;}
+    ResCode Step(epxos_instance_proto::InstanceSwapMsg & inswap);
 private:
-    NodeSize GetArrSize()const{ return NodeSize(inslist_.size());}  
-
-    DepsIDs GetArrDeps()const;
-
-    /**
-     * @brief 插入或者更新本地，更新ins，更新seq
-     * 
-     * @param inswap 
-     * @return ResCode 
-     */
-    //ResCode ReFreshLocal(const InstanceSwap & inswap);  
-
+    static std::string GetInscKey(const epxos_instance_proto::EpInstance&a);
 private:
-    InstanceCollector *localArray_;
-    std::vector<InstanceCollector > inslist_;
+    //本地存储，存放所有的内容
+    StorageMsgTransfer<epxos_instance_proto::EpValueStorageBody> *db_kv_;   //专门用来存储dbd
+    StorageMsgTransfer<epxos_instance_proto::EpInstance> *db_ins_; //专门用来存储
 
-    NodeID localNodeId_;
-
-    MutexSeqID seq_; //不落盘
+    epxos_instance_proto::EpGlobalConf *ccf_;
 };
 
 }
