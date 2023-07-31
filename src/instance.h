@@ -3,14 +3,14 @@
 #ifndef __EPAXOS_INSTANCE__
 #define __EPAXOS_INSTANCE__
 
-#include "../include/comminclude.h"
+#include "include/comminclude.h"
 #include "status.h"
 
-#include "../include/rescode.h"
+#include "include/rescode.h"
 
-#include "../include/storage_tranfer.h"
+#include "include/storage_tranfer.h"
 
-#include "instance.pb.h"
+#include "proto/instance.pb.h"
 
 namespace epaxos {
 

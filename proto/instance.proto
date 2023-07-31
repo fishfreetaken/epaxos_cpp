@@ -1,8 +1,7 @@
 syntax = "proto3";
 
 package epxos_instance_proto;
-
-import "conf.proto";  
+import "proto/conf.proto";
 
 enum EpWorkState{
     EPXOS_EM_WK_EMPTY       = 0;
@@ -13,9 +12,13 @@ enum EpWorkState{
     EPXOS_EM_WK_EXEC        = 5;
 };
 
+message BallotNum{
+    uint32  bt = 1;             //投票号
+};
+
 message EpIns{
-    uint64 insid        = 2;    //事件id
-    EpNodeId nodeid     = 3;    //节点编号id
+    uint64 insid        = 1;    //事件id
+    EpNodeId nodeid     = 2;    //节点编号id
 };
 
 message EpInstID {
@@ -33,13 +36,17 @@ message EpKeyValueItem{
     optional string value   = 2;
 };
 
+message EpInsNodeAck{
+
+};
+
 // __EP_SEQID_NODEID_INSID_  = key
 message EpInstance{
     EpInstID iID                = 1;
     EpWorkState sate            = 2;
     uint32 ballot_num           = 3;
     optional EpDepsIds arryids  = 4;
-    uint32 ack_num              = 5;            //应答的集群数量
+    uint32 ack_num              = 5;            //统计应答的状态和数量
     repeated EpKeyValueItem kvs = 6;            //关联的key和请求的value值
 };
 
@@ -77,5 +84,4 @@ message EpaxosInsReadRsp{
     EpIns ins_rsp       = 2;
     repeated EpKeyValueItem kvs = 3;           //关联的key和请求的value值
 };
-
 
