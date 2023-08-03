@@ -7,7 +7,6 @@ cc_library(
     hdrs = ["instance_node.h"],
     deps = ["//proto:instance_cc_proto","//include:include-header"],
     visibility=["//visibility:public"],
-    #visibility=["//visibility:public"],
 )
 
 
