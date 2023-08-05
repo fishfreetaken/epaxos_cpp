@@ -3,6 +3,9 @@
 #ifndef __EPAXOS_INCLUE_RESCODE__
 #define __EPAXOS_INCLUE_RESCODE__
 #include <string>
+#include <spdlog/spdlog.h>
+#include <cassert>
+
 namespace epaxos {
 
 class IfChange{
@@ -29,11 +32,19 @@ private:
 class ResCode:public IfChange {
 
 public: 
-    ResCode():iCode_(0),state_(0){}
-    ResCode(int i):iCode_(i),state_(0){}
-    ResCode(std::string s):iCode_(0),state_(0),strPromote(s){}
+    ResCode():iCode_(0){}
+    ResCode(int i):iCode_(i){}
+    ResCode(int i,std::string s):iCode_(i),strPromote(s){}
 
     std::string  GetRemote(){return strPromote;}
+
+    static ResCode Success(){return ResCode(0);}
+
+    static ResCode DBReadErr(){return ResCode(-1,"DB Read Failed");}
+    static ResCode DBWriteErr(){return ResCode(-2,"DB Write failed");}
+    static ResCode NotFound(){return ResCode(-3,"Not found");}
+    static ResCode DecodeErr(){return ResCode(-3,"Decode failed");}
+    static ResCode EncodeErr(){return ResCode(-3,"Encode failed");}
 
     void RefreshCode(ResCode c){
         Refresh(c);
@@ -44,13 +55,8 @@ public:
         if((iCode_ !=0 )||(strPromote.size()>0)){
             return true;
         }
-        
         return false;
     }
-
-    void SetExist(){state_ |= EM_INS_STATE_EXIST; }
-    void SetNoExist(){state_ &= (~EM_INS_STATE_EXIST); }
-    bool IsExist()const {  return (state_ & EM_INS_STATE_EXIST) >0; }
 
 private:
     enum emInstanceCodeState{
@@ -59,7 +65,6 @@ private:
 
     //new instance 
     int iCode_;             //错误码
-    uint32_t state_;
     std::string strPromote;  //提示
 };
 

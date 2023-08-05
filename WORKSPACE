@@ -12,6 +12,18 @@ http_archive(
     url = "https://github.com/protocolbuffers/protobuf/archive/3f13a1de2cfa2d6788b803da82c03233e8f315e6.zip",
 )
 
+new_local_repository(
+    name = "leveldb",
+    path = "/data/home/vapourchen/github/leveldb",
+    build_file = "BUILD.leveldb",
+)
+
+new_local_repository(
+    name = "spdlog",
+    path = "/data/home/vapourchen/github/spdlog",
+    build_file = "BUILD.spdlog",
+)
+
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()

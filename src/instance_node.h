@@ -4,6 +4,8 @@
 #include "proto/instance.pb.h"
 #include "include/rescode.h"
 
+#include "include/rescode.h"
+
 namespace epaxos{
 
 class Instance{
