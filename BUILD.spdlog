@@ -1,0 +1,9 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "spdlog_lib",
+    hdrs = glob(["include/spdlog/**","include/spdlog/details/**"]),
+    srcs = ["build/libspdlog.a",],
+    includes = [ "include" ],
+    visibility=["//visibility:public"],
+)

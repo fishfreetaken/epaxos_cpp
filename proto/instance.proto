@@ -36,10 +36,6 @@ message EpKeyValueItem{
     optional string value   = 2;
 };
 
-message EpInsNodeAck{
-
-};
-
 // __EP_SEQID_NODEID_INSID_  = key
 message EpInstance{
     EpInstID iID                = 1;
@@ -56,9 +52,6 @@ message EpValueItem{
     EpInstID iID            =2;
 };
 
-message EpValueStorageBody{
-    optional EpValueItem items=1;   //可以保存历史的进行回溯
-};
 
 message InstanceSwapMsg{
     EpInstance insc           = 1;

@@ -1,0 +1,9 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "leveldb_lib",
+    hdrs = glob(["include/leveldb/*.h"]),
+    srcs = ["build/libleveldb.a",],
+    includes = [ "include" ],
+    visibility=["//visibility:public"],
+)
