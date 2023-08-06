@@ -12,9 +12,9 @@ ResCode BatchGetKvValueArray::GenNewInsMaxSeqID(std::vector<std::string>& mp,epx
         epxos_instance_proto::EpValueItem value;
         bool exist=cache_->tryGet(*iter,value);
         if(!exist){
-            spdlog::trace("BatchGetKvValueArray::GenNewInsMaxSeqID local cache miss key:{} nofind:{}",*iter,nofind.size());
             nofind.push_back(*iter);
         }else{
+            spdlog::trace("BatchGetKvValueArray::GenNewInsMaxSeqID local cache target key:{} nofind:{}",*iter,tmpvalue.size());
             tmpvalue[*iter]=value;
         }
     }
@@ -41,7 +41,7 @@ ResCode BatchGetKvValueArray::GenNewInsMaxSeqID(std::vector<std::string>& mp,epx
     for(auto iter = tmpvalue.begin();iter!=tmpvalue.end();iter++){
         iter->second.mutable_iid()->set_seqid(tmp_seq);
     }
-    spdlog::trace("BatchGetKvValueArray::GenNewInsMaxSeqID: ready to batchset  tmpseq:{} tmpvalue:{}",tmp_seq,tmpvalue.size());
+    spdlog::trace("BatchGetKvValueArray::GenNewInsMaxSeqID: ready to batchset  tmpseq:{} tmpvalue_size:{}",tmp_seq,tmpvalue.size());
     return this->BatchSet(tmpvalue);
 }
 

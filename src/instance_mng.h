@@ -12,7 +12,6 @@
 #include "leveldb_kv.h"
 
 namespace epaxos {
-
 class BatchGetKvValueArray:public ProtobufCacheHandler<epxos_instance_proto::EpValueItem>{
 public:
     BatchGetKvValueArray(StorageBaseInterface * db):ProtobufCacheHandler<epxos_instance_proto::EpValueItem>(db){

@@ -29,16 +29,15 @@ private:
     bool val_;
 };
 
-class ResCode:public IfChange {
+class ResCode {
 
 public: 
     ResCode():iCode_(0){}
-    ResCode(int i):iCode_(i){}
     ResCode(int i,std::string s):iCode_(i),strPromote(s){}
 
     std::string  GetRemote(){return strPromote;}
 
-    static ResCode Success(){return ResCode(0);}
+    static ResCode Success(){return ResCode();}
 
     static ResCode DBReadErr(){return ResCode(-1,"DB Read Failed");}
     static ResCode DBWriteErr(){return ResCode(-2,"DB Write failed");}
@@ -46,17 +45,16 @@ public:
     static ResCode DecodeErr(){return ResCode(-3,"Decode failed");}
     static ResCode EncodeErr(){return ResCode(-3,"Encode failed");}
 
-    void RefreshCode(ResCode c){
-        Refresh(c);
-        //上报优先级更高的错误
-        iCode_ = c.iCode_ >  iCode_ ? c.iCode_ : iCode_;
-    }
     bool IsError(){
         if((iCode_ !=0 )||(strPromote.size()>0)){
             return true;
         }
         return false;
     }
+    bool IsNotFound(){
+        return iCode_ == -3;
+    }
+    int Code(){return iCode_;}
 
 private:
     enum emInstanceCodeState{

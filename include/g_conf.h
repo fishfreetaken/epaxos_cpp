@@ -5,17 +5,21 @@
 
 namespace epaxos{
 
-class GLobalConf{
+class GEpLobalConf{
 
 public:
-    void g_init(){
+    void init_log(std::string filename=""){
+        if(filename == "") {
+            filename =  "./log/basic_log.txt";
+        }
         //日志初始化
-        auto logger = spdlog::create<spdlog::sinks::basic_file_sink_mt>("logger", "./log/basic_log.txt");
-        logger->set_pattern("[%H:%M:%S.%e] [%^%L%$] [%s:%#] %v");
+        auto logger = spdlog::create<spdlog::sinks::basic_file_sink_mt>("logger",filename);
+        //logger->set_pattern("[%H:%M:%S.%e] [%n] [%^%L%$] [%s:%#] [thread %t] %v");
+        logger->set_pattern("[%Y-%m-%d %H:%M:%S] [%^%L%$] [%s:%#] %v");
         logger->set_level(spdlog::level::trace);
         spdlog::set_default_logger(logger);
+        spdlog::info("Welcome to spdlog!");
     }
-
 private:
 
 };

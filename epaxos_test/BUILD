@@ -12,6 +12,6 @@ cc_test(
     name = "instance_test",
     size = "small",
     srcs = ["instance_test.cc"],
-    deps = ["@com_google_googletest//:gtest_main","//proto:instance_cc_proto"],
+    deps = ["@com_google_googletest//:gtest_main","//src:src_lib"],
 )
     

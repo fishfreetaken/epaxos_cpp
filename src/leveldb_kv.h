@@ -30,21 +30,13 @@ template<typename T>
 class ProtobufCacheHandler{
 public:
     ResCode Get(const std::string &key, T &value){
-         //先查cache 
+         //先查cache
         bool exist=cache_->tryGet(key,value);
         if(exist){
+             SPDLOG_TRACE("ProtobufCacheHandler::get from cache key:{}",key);
             return ResCode::Success();
         }
-        SPDLOG_TRACE("ProtobufCacheHandler::get local cache miss key:{}",key);
-        //假如不存在
-        
-        ResCode r = ReadOneFromDb(key,value);
-        if(r.IsError()){
-            SPDLOG_ERROR("ProtobufCacheHandler::ReadOneFromDb failed key:{}",key);
-            return r;
-        }
-    
-        return ResCode::Success();
+        return ReadOneFromDb(key,value);
     }
 
     ResCode Set(const std::string &key, T &value);
@@ -62,7 +54,7 @@ public:
             }
             readyToWrite[iter->first]=value;
             cache_->insert(iter->first,iter->second);
-            spdlog::trace("batch set: {}",iter->first);
+            //spdlog::trace("batch set: {}",iter->first);
         }
         ResCode r= db_interface_->batchwrite(readyToWrite);
 

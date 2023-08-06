@@ -9,6 +9,7 @@
 namespace epaxos{
 class StorageBaseInterface{
 public:
+    virtual ~StorageBaseInterface(){};
     virtual ResCode read(const std::string &key,std::string &value)=0;
     virtual ResCode write(const std::string &key,const std::string &value,bool sync=false)=0;
 
