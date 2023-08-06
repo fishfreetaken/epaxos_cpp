@@ -47,6 +47,10 @@ ResCode LeveldbStorageKv::batchwrite(std::unordered_map<std::string,std::string>
     return ResCode::Success();
 }
 
+void LeveldbStorageKv::del(std::string key){
+    db_->Delete(leveldb::WriteOptions(),key);
+}
+
 /*
 template<typename T>
 ResCode ProtobufCacheHandler<T>::Get(const std::string &key, T &value ){

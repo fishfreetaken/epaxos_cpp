@@ -19,7 +19,8 @@ public:
         assert(db!=nullptr);
     }
 
-    ResCode BatchAtoicKeyValueSeqId(std::vector<std::string>& mp, epxos_instance_proto::EpInstID * insid ,bool from =false);
+    //生成一个新的事件，获取最大seq
+    ResCode GenNewInsMaxSeqID(std::vector<std::string>& mp, epxos_instance_proto::EpInstID * insid);
 };
 
 

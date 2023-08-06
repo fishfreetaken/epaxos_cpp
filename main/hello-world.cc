@@ -24,29 +24,47 @@ void print_localtime() {
 }
 
 int main(int argc, char** argv) {
-  std::string who = "world";
-  if (argc > 1) {
-    who = argv[1];
+  std::string who = "vapourchen";
+
+  int start=0;
+  int end=0;
+  if (argc >= 3) {
+    start = atoi(argv[1]);
+    end = atoi(argv[2]);
   }
 
+
+  auto logger = spdlog::create<spdlog::sinks::basic_file_sink_mt>("logger", "./log/basic_log.txt");
+  //logger->set_pattern("[%H:%M:%S.%e] [%n] [%^%L%$] [%s:%#] %v");
+  logger->set_pattern("[%Y-%m-%d %H:%M:%S] [%^%L%$] [%s:%#] [thread %t] %v");
+  logger->set_level(spdlog::level::trace);
+  spdlog::set_default_logger(logger);
+  spdlog::info("Welcome to spdlog!");
+
   epaxos::LeveldbStorageKv ldb(kvdbfile);
+
   std::string key("vapourchen");
   epaxos::BatchGetKvValueArray bgv(&ldb);
 
   std::vector<std::string> vct;
-  for(int i=0;i<10;i++){
-    vct.push_back(key+ std::to_string(i));
+  for(int i=start;i<=end;i++){
+    std::string tmp=key+ std::to_string(i);
+    vct.push_back(tmp);
   }
 
   epxos_instance_proto::EpInstID insid;
 
-  bgv.BatchAtoicKeyValueSeqId(vct,&insid);
-
-  for(int i=0;i<10;i++){
-    epxos_instance_proto::EpValueItem v;
-    bgv.Get(vct[i],v);
-    spdlog::info("i{} info{}!",i,11);
+  epaxos::ResCode r = bgv.GenNewInsMaxSeqID(vct,&insid);
+  if (r.IsError()){
+    spdlog::error("maxSeq Gen failed error: {}",r.GetRemote());
+    return r.Code();
   }
+
+  std::for_each(vct.begin(),vct.end(),[&](const std::string & key){
+    epxos_instance_proto::EpValueItem v;
+    bgv.Get(key,v);
+    spdlog::info("key:{} info:{}!",key,v.iid().seqid());
+  });
   
   /*
   std::string value;
@@ -72,8 +90,8 @@ int main(int argc, char** argv) {
   }
   */
 
-
-  spdlog::info("Welcome to spdlog!");
+  /*
+  
   spdlog::error("Some error message with arg: {}", 1);
 
   spdlog::warn("Easy padding in numbers like {:08d}", 12);
@@ -81,18 +99,7 @@ int main(int argc, char** argv) {
   spdlog::info("Support for floats {:03.2f}", 1.23456);
   spdlog::info("Positional args are {1} {0}..", "too", "supported");
   spdlog::info("{:<30}", "left aligned222");
-
-  spdlog::set_pattern("[%H:%M:%S %z] [%n] [%^---%L---%$] [thread %t] %v");
-
-
-  auto logger = spdlog::create<spdlog::sinks::basic_file_sink_mt>("logger", "./log/basic_log.txt");
-  logger->set_pattern("[%H:%M:%S.%e] [%^%L%$] [%s:%#] %v");
-  logger->set_level(spdlog::level::trace);
-  spdlog::set_default_logger(logger);
-  
-
-  SPDLOG_TRACE("Some trace message with param {} {}", 42,"hello world");
-  SPDLOG_DEBUG("Some debug message");
+  */
 
   print_localtime();
   return 0;

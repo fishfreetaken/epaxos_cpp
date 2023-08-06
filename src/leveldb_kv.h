@@ -18,6 +18,8 @@ public:
 
     ResCode batchread(std::unordered_map<std::string,std::string>& mp);
     ResCode batchwrite(std::unordered_map<std::string,std::string>& mp,bool sync=false);
+
+    void del(const std::string key);
     
 private:
     leveldb::DB*  db_;
@@ -27,26 +29,18 @@ private:
 template<typename T>
 class ProtobufCacheHandler{
 public:
-    ProtobufCacheHandler(StorageBaseInterface * db):db_interface_(db){
-        cache_ = new lru11::Cache<std::string,T>(10,2);
-        assert(cache_!=nullptr);
-    }
-    ~ProtobufCacheHandler(){
-        delete cache_;
-    }
-
     ResCode Get(const std::string &key, T &value){
          //先查cache 
         bool exist=cache_->tryGet(key,value);
         if(exist){
             return ResCode::Success();
         }
-        spdlog::trace("ProtobufCacheHandler::get local cache miss key:{}",key);
+        SPDLOG_TRACE("ProtobufCacheHandler::get local cache miss key:{}",key);
         //假如不存在
         
         ResCode r = ReadOneFromDb(key,value);
         if(r.IsError()){
-            spdlog::error("ProtobufCacheHandler::ReadOneFromDb failed key:{}",key);
+            SPDLOG_ERROR("ProtobufCacheHandler::ReadOneFromDb failed key:{}",key);
             return r;
         }
     
@@ -56,14 +50,19 @@ public:
     ResCode Set(const std::string &key, T &value);
 
     ResCode BatchSet(std::unordered_map<std::string,T>& mp){
+        if(mp.size()==0){
+            spdlog::warn("batchset null map");
+            return ResCode::Success();
+        }
         std::unordered_map<std::string,std::string> readyToWrite;
         for(auto iter = mp.begin();iter!=mp.end();iter++){
             std::string value;
-            if (iter->second.SerializeToString(&value)){
+            if (!iter->second.SerializeToString(&value)){
                 return ResCode::EncodeErr();
             }
             readyToWrite[iter->first]=value;
             cache_->insert(iter->first,iter->second);
+            spdlog::trace("batch set: {}",iter->first);
         }
         ResCode r= db_interface_->batchwrite(readyToWrite);
 
@@ -74,6 +73,9 @@ public:
         std::string strv;
         ResCode r = db_interface_->read(key,strv);
         if(r.IsError()){
+            if(r.IsNotFound()){
+                return ResCode::Success();
+            }
             spdlog::error("ProtobufCacheHandler::ReadOneFromDb db read failed res:{}",r.GetRemote());
             return r;
         }
@@ -87,6 +89,15 @@ public:
     }
 
 protected:
+    ProtobufCacheHandler(StorageBaseInterface * db):db_interface_(db){
+        cache_ = new lru11::Cache<std::string,T>(10,2);
+        assert(cache_!=nullptr);
+    }
+    ~ProtobufCacheHandler(){
+        delete cache_;
+    }
+
+
     lru11::Cache<std::string,T> *cache_;
 
     StorageBaseInterface *db_interface_;//如果不存在就直接读取

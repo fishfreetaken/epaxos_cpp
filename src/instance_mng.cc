@@ -4,22 +4,22 @@
 
 namespace  epaxos {
 
-ResCode BatchGetKvValueArray::BatchAtoicKeyValueSeqId(std::vector<std::string>& mp,epxos_instance_proto::EpInstID * insid ,bool from){
-    //获取最大值    
+ResCode BatchGetKvValueArray::GenNewInsMaxSeqID(std::vector<std::string>& mp,epxos_instance_proto::EpInstID * insid){
+    //获取最大值
     std::unordered_map<std::string , epxos_instance_proto::EpValueItem> tmpvalue;
-
     std::vector<std::string> nofind;
     for(auto iter = mp.begin();iter!=mp.end();iter++){
         epxos_instance_proto::EpValueItem value;
         bool exist=cache_->tryGet(*iter,value);
         if(!exist){
-            spdlog::trace("ProtobufCacheHandler::get local cache miss key:{}",*iter);
-            tmpvalue[*iter]=epxos_instance_proto::EpValueItem();
+            spdlog::trace("BatchGetKvValueArray::GenNewInsMaxSeqID local cache miss key:{} nofind:{}",*iter,nofind.size());
             nofind.push_back(*iter);
         }else{
             tmpvalue[*iter]=value;
         }
     }
+
+    spdlog::trace("BatchGetKvValueArray::GenNewInsMaxSeqID nofind:{} tmpvalue:{}",nofind.size(),tmpvalue.size());
 
     for_each(nofind.begin(),nofind.end(),[&](std::string & key){
         epxos_instance_proto::EpValueItem v;
@@ -31,24 +31,17 @@ ResCode BatchGetKvValueArray::BatchAtoicKeyValueSeqId(std::vector<std::string>& 
     uint64_t tmp_seq=0;
     for(auto iter = tmpvalue.begin();iter!=tmpvalue.end();iter++){
         if(iter->second.iid().seqid() >= tmp_seq){
+            spdlog::trace("BatchGetKvValueArray::GenNewInsMaxSeqID: tmp:{} cur:{}",tmp_seq,iter->second.iid().seqid());
             tmp_seq = iter->second.iid().seqid()+1;
         }
     }
 
-    //从远端来的同步
-    if(from){
-        if(tmp_seq <= insid->seqid()){
-            tmp_seq = insid->seqid() +1;
-        }else{
-            insid->set_seqid(tmp_seq);
-            return ResCode::Success(); //不需要进行处理
-        }
-    }
+    insid->set_seqid(tmp_seq);
 
     for(auto iter = tmpvalue.begin();iter!=tmpvalue.end();iter++){
         iter->second.mutable_iid()->set_seqid(tmp_seq);
     }
-
+    spdlog::trace("BatchGetKvValueArray::GenNewInsMaxSeqID: ready to batchset  tmpseq:{} tmpvalue:{}",tmp_seq,tmpvalue.size());
     return this->BatchSet(tmpvalue);
 }
 
