@@ -3,17 +3,14 @@
 
 #include "proto/instance.pb.h"
 #include "include/rescode.h"
-
-#include "include/rescode.h"
-
 namespace epaxos{
 
 class Instance{
 public:
     Instance(){}    //从db中直接解析，或者直接拿到id
-    Instance(epxos_instance_proto::EpInstance & t):ins_(t){}
-
-    ResCode InitInsFromString(std::string &body);
+    Instance(std::string & value){
+        assert(ins_.ParseFromString(value));
+    }
 
     ResCode step(epxos_instance_proto::InstanceSwapMsg *ins);
 
@@ -31,7 +28,8 @@ private:
     bool CanCommit();
 
 private:
-    epxos_instance_proto::EpInstance ins_;
+    epxos_instance_proto::EpInstance ins_; //本地
+
 };
 
 };

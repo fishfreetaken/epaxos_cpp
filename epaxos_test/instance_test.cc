@@ -14,7 +14,7 @@ protected:
     gf_->init_log();
     ASSERT_NE(ldb_,nullptr);
 
-    raw_key = "vapourchen";
+    raw_key = "vvapp";
   }
 
   static void TearDownTestSuite() {
@@ -41,13 +41,17 @@ protected:
   }
 
   int64_t GetSeqId(size_t start,size_t end) {
-    std::vector<std::string> vct;
+    epxos_instance_proto::EpInstance insid;
+    bgv->GenNewInsMaxSeqID(insid);
+    return insid.iid().seqid();
+  }
+
+  void GetInsInfo(size_t start,size_t end,epxos_instance_proto::EpInstance& ins){
     for(size_t i=start ;i<= end; i++){
-      vct.push_back(InstanceMngBatchKvArrTest::raw_key + std::to_string(i));
+      std::string key(raw_key + std::to_string(i));
+      epxos_instance_proto::EpKeyValueItem* tmp = ins.mutable_depsids()->add_item();
+      tmp->set_key(key);
     }
-    epxos_instance_proto::EpInstID insid;
-    bgv->GenNewInsMaxSeqID(vct,&insid);
-    return insid.seqid();
   }
 
   static epaxos::LeveldbStorageKv *ldb_;
@@ -82,10 +86,7 @@ TEST_P(InstanceMngBatchKvArrTest, DonsFirst) {
     vct.push_back(InstanceMngBatchKvArrTest::raw_key + std::to_string(i));
   }
 
-  epxos_instance_proto::EpInstID insid;
-  bgv->GenNewInsMaxSeqID(vct,&insid);
-
-  uint64_t tmp_seq = insid.seqid();
+  uint64_t tmp_seq =bgv->GetSeqId(start,end);
   ++st_g_seq;
   EXPECT_EQ(st_g_seq,tmp_seq);
 
@@ -98,7 +99,6 @@ TEST_P(InstanceMngBatchKvArrTest, DonsFirst) {
     bgv->ReadOneFromDb(key,v);
     EXPECT_EQ(tmp_seq,v.iid().seqid());
   });
-
 }
 
 //testing::Range(0, 10)

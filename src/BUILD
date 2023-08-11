@@ -6,10 +6,13 @@ cc_library(
     srcs = [
         "instance_mng.cc",
         "leveldb_kv.cc",
+        "instance_node.cc",
     ],
     hdrs = [
         "instance_mng.h",
         "leveldb_kv.h",
+        "node_num_cfg.h",
+        "instance_node.h",
     ],
     deps = [
         "//proto:instance_cc_proto",

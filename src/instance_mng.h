@@ -10,22 +10,24 @@
 #include "proto/instance.pb.h"
 
 #include "leveldb_kv.h"
-
+#include "node_num_cfg.h"
+#include <memory>
+#include "instance_node.h"
 namespace epaxos {
-class BatchGetKvValueArray:public ProtobufCacheHandler<epxos_instance_proto::EpValueItem>{
+class BatchGetKvValueArray:public ProtobufCacheHandler<epxos_instance_proto::EpKeyValueItem>{
 public:
-    BatchGetKvValueArray(StorageBaseInterface * db):ProtobufCacheHandler<epxos_instance_proto::EpValueItem>(db){
+    BatchGetKvValueArray(StorageBaseInterface * db):ProtobufCacheHandler<epxos_instance_proto::EpKeyValueItem>(db){
         assert(db!=nullptr);
     }
 
     //生成一个新的事件，获取最大seq
-    ResCode GenNewInsMaxSeqID(std::vector<std::string>& mp, epxos_instance_proto::EpInstID * insid);
+    ResCode GenNewInsMaxSeqID(epxos_instance_proto::EpInstance & insid);
 };
-
 
 class InstanceManager {
 public:
-    InstanceManager(epxos_instance_proto::EpGlobalConf *p); //本地的node
+    InstanceManager(StorageBaseInterface * db); //本地的node
+    ~InstanceManager();
 
     //生成inst事件并保存本地
     ResCode GenNewInstance(const epxos_instance_proto::EpaxosInsWriteReq & arrvalues,
@@ -34,10 +36,16 @@ public:
     ResCode Step(epxos_instance_proto::InstanceSwapMsg & inswap);
 
 private:
-    static std::string GetInscKey(const epxos_instance_proto::EpInstance&a);
-private:
+    ResCode SaveInstance(const epxos_instance_proto::EpInstance&ins);
 
-    epxos_instance_proto::EpGlobalConf *ccf_;
+    std::shared_ptr<Instance> LoadInstance(const epxos_instance_proto::EpInstID&iid);     //从存储里加载出instance
+
+private:
+    NodeLocalInstanceId  *plocalinstmng_;
+
+    BatchGetKvValueArray *parr_;
+
+    ProtobufCacheHandler<epxos_instance_proto::EpInstance> * db_;
 };
 
 }

@@ -39,7 +39,14 @@ public:
         return ReadOneFromDb(key,value);
     }
 
-    ResCode Set(const std::string &key, T &value);
+    ResCode Set(const std::string &key,const T &v){
+        cache_->insert(key,v);
+        std::string value;
+        if (!v.SerializeToString(&value)){
+            return ResCode::EncodeErr();
+        }
+        return db_interface_->write(key,value);
+    }
 
     ResCode BatchSet(std::unordered_map<std::string,T>& mp){
         if(mp.size()==0){
@@ -80,7 +87,11 @@ public:
         return ResCode::Success();
     }
 
-protected:
+    ResCode RawRed(const std::string  &key, std::string &value){
+        return db_interface_->read(key,value);
+    }
+
+
     ProtobufCacheHandler(StorageBaseInterface * db):db_interface_(db){
         cache_ = new lru11::Cache<std::string,T>(10,2);
         assert(cache_!=nullptr);
@@ -89,7 +100,7 @@ protected:
         delete cache_;
     }
 
-
+protected:
     lru11::Cache<std::string,T> *cache_;
 
     StorageBaseInterface *db_interface_;//如果不存在就直接读取

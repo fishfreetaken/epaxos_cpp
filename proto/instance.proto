@@ -16,56 +16,47 @@ message BallotNum{
     uint32  bt = 1;             //投票号
 };
 
-message EpIns{
-    uint64 insid        = 1;    //事件id
-    EpNodeId nodeid     = 2;    //节点编号id
-};
-
 message EpInstID {
     uint64 seqid        = 1;    //seqid，可以不唯一
-    EpIns iID           = 2;
-};
-
-message EpDepsIds{
-    repeated EpInstID arrdps  =1;   //依赖的节点
-    uint32 version            =2;   //如果依赖有最新的值进行替换更新，那么就更新该版本号
+    uint64 insid        = 2;    //事件id
+    EpNodeId nodeid     = 3;    //节点编号id
 };
 
 message EpKeyValueItem{
-    string key              = 1;
-    optional string value   = 2;
+    EpInstID iid            = 1;         //只更新最大的
+    optional string key     = 2;
+    optional string value   = 3;
+};
+
+message EpDepsIds{
+    repeated EpKeyValueItem  item   = 1;
+    uint32 version                  = 2;   //如果依赖有最新的值进行替换更新，那么就更新该版本号
 };
 
 // __EP_SEQID_NODEID_INSID_  = key
 message EpInstance{
-    EpInstID iID                = 1;
+    EpInstID iid                = 1;
     EpWorkState sate            = 2;
     uint32 ballot_num           = 3;
-    optional EpDepsIds arryids  = 4;
-    uint32 ack_num              = 5;            //统计应答的状态和数量
-    repeated EpKeyValueItem kvs = 6;            //关联的key和请求的value值
+    EpDepsIds depsids           = 4;
+    repeated EpNodeId ack_nodes = 5;           //应答的ack
 };
-
-//key-key
-message EpValueItem{
-    optional string value   =1;
-    EpInstID iID            =2;
-};
-
 
 message InstanceSwapMsg{
     EpInstance insc           = 1;
     EpNodeId to_node          = 2;
     EpNodeId from_node        = 3;
+    bool is_ack               = 4; //false                 
 };
 
 message EpaxosInsWriteReq{
     repeated EpKeyValueItem list    =1;
+    repeated EpKeyValueItem deps = 2;   //依赖,
 };
 
 message EpaxosInsWriteRsp{
-    int32 res_code      = 1;
-    EpIns ins_rsp       = 2;
+    int32 res_code                  = 1;
+    repeated EpKeyValueItem ins_rsp = 2; //返回的依赖
 };
 
 message EpaxosInsReadReq{
@@ -73,8 +64,7 @@ message EpaxosInsReadReq{
 };
 
 message EpaxosInsReadRsp{
-    int32 res_code      = 1;
-    EpIns ins_rsp       = 2;
-    repeated EpKeyValueItem kvs = 3;           //关联的key和请求的value值
+    int32 res_code              = 1;
+    repeated EpKeyValueItem kvs = 2;           //关联的key和请求的value值
 };
 

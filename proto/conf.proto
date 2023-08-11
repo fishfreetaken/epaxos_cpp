@@ -7,15 +7,10 @@ message EpNodeId {
 };
 
 message EnNodeInfo{
-    EpNodeId iID          = 1;
+    EpNodeId iid          = 1;
     string ip               = 2;
     int32 port              = 3;
     optional string name    = 4;
-};
-
-//本地的insid，需要经常进行更新
-message LocalInstanceId{
-    uint64 iID =1;  // 本地唯一的id
 };
 
 // 本地集群的初始化配置，只需要都多写少
