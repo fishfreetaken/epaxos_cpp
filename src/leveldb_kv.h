@@ -64,6 +64,13 @@ public:
             //spdlog::trace("batch set: {}",iter->first);
         }
         ResCode r= db_interface_->batchwrite(readyToWrite);
+        if (r.IsError()){
+            //如果更新失败，从本地缓存中删除
+            for(auto iter = mp.begin();iter!=mp.end();iter++){
+                cache_->remove(iter->first);
+            }
+            spdlog::error("batch set key failed :{}",r.GetRemote());
+        }
 
         return r;
     }

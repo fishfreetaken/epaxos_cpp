@@ -122,6 +122,11 @@ public:
         delete cf_;
         mt_=nullptr;
         cf_ = nullptr;
+
+        delete inner_db_;
+        delete public_db_;
+        public_db_=nullptr;
+        inner_db_ =nullptr;
     }
 
     //自增本地的insid并返回
@@ -136,8 +141,21 @@ public:
         return mt_->readins();
     }
 
-    void InitLocalCf(){
+    void Init(){
         cf_->readpb(ecf_);
+        inner_db_file_ = ecf_.inner_db_file();
+        if(inner_db_file_.size()==0){
+            inner_db_file_ = "./innerdb";
+        }
+        inner_db_ = new epaxos::LeveldbStorageKv(inner_db_file_);
+
+        public_db_file_ = ecf_.public_db_file();
+        if(public_db_file_.size()==0){
+            public_db_file_ = "./testdb";
+        }
+        public_db_ = new epaxos::LeveldbStorageKv(public_db_file_);
+
+        assert(public_db_ != nullptr && inner_db_!=nullptr);
     }
 
     void UpdatelocalCf(const epxos_instance_proto::EpGlobalConf & t){
@@ -148,12 +166,21 @@ public:
 
     const epxos_instance_proto::EpGlobalConf & GetLocalCf(){return ecf_;}
 
+    epaxos::LeveldbStorageKv* GetInnerDb(){return inner_db_;}
+    epaxos::LeveldbStorageKv* GetPublicDb(){return public_db_;}
+
 private:
     NodeNumCfg<uint64_t> *mt_;
 
     epxos_instance_proto::EpGlobalConf ecf_; //将本地配置保存在本地，允许通过json的方式进行修改
 
     NodeNumCfg<epxos_instance_proto::EpGlobalConf> * cf_;
+
+    std::string inner_db_file_;
+    std::string public_db_file_;
+
+    epaxos::LeveldbStorageKv *inner_db_;
+    epaxos::LeveldbStorageKv *public_db_;
 };
 
 };

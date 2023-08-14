@@ -42,8 +42,9 @@ public:
     static ResCode DBReadErr(){return ResCode(-1,"DB Read Failed");}
     static ResCode DBWriteErr(){return ResCode(-2,"DB Write failed");}
     static ResCode NotFound(){return ResCode(-3,"Not found");}
-    static ResCode DecodeErr(){return ResCode(-3,"Decode failed");}
-    static ResCode EncodeErr(){return ResCode(-3,"Encode failed");}
+    static ResCode DecodeErr(){return ResCode(-4,"Decode failed");}
+    static ResCode EncodeErr(){return ResCode(-5,"Encode failed");}
+    static ResCode InvalidParamErr(){return ResCode(-6,"Invalid Param");}
 
     bool IsError(){
         if((iCode_ !=0 )||(strPromote.size()>0)){

@@ -18,4 +18,6 @@ message EpGlobalConf{
     EpNodeId local_nodeid           =1;
     repeated EnNodeInfo node_list   =2;
     repeated EpNodeId fast_gp_list  =3; //快速提交的队列
+    string inner_db_file = 4;   //内部的db文件file
+    string public_db_file = 5;  //外部的
 };

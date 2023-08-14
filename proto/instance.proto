@@ -37,7 +37,7 @@ message EpDepsIds{
 message EpInstance{
     EpInstID iid                = 1;
     EpWorkState sate            = 2;
-    uint32 ballot_num           = 3;
+    uint32 ballot           = 3;
     EpDepsIds depsids           = 4;
     repeated EpNodeId ack_nodes = 5;           //应答的ack
 };
@@ -50,8 +50,8 @@ message InstanceSwapMsg{
 };
 
 message EpaxosInsWriteReq{
-    repeated EpKeyValueItem list    =1;
-    repeated EpKeyValueItem deps = 2;   //依赖,
+    repeated EpKeyValueItem list    = 1;
+    repeated EpKeyValueItem deps    = 2;   //依赖,
 };
 
 message EpaxosInsWriteRsp{

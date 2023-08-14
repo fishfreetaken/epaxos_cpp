@@ -20,13 +20,19 @@ public:
         assert(db!=nullptr);
     }
 
+    ResCode LoadkeysItems(epxos_instance_proto::EpInstance &ins,std::unordered_map<std::string , epxos_instance_proto::EpKeyValueItem> tmpvalue);
+
     //生成一个新的事件，获取最大seq
     ResCode GenNewInsMaxSeqID(epxos_instance_proto::EpInstance & insid);
+
+    //拉取deps对应的所有的key以及key的值
+    ResCode Updatekeys(std::unordered_map<std::string , epxos_instance_proto::EpKeyValueItem> tmpvalue);
 };
 
 class InstanceManager {
 public:
-    InstanceManager(StorageBaseInterface * db); //本地的node
+    friend Instance;
+    InstanceManager(); //本地的node
     ~InstanceManager();
 
     //生成inst事件并保存本地
@@ -39,6 +45,8 @@ private:
     ResCode SaveInstance(const epxos_instance_proto::EpInstance&ins);
 
     std::shared_ptr<Instance> LoadInstance(const epxos_instance_proto::EpInstID&iid);     //从存储里加载出instance
+
+    void BuildInstanceKey(std::string &key,const epxos_instance_proto::EpInstID&ins);
 
 private:
     NodeLocalInstanceId  *plocalinstmng_;

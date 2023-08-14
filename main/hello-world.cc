@@ -35,51 +35,49 @@ int main(int argc, char** argv) {
   epaxos::GEpLobalConf gf;
   gf.init_log();
 
-  epaxos::NodeLocalInstanceId  localinstmng;
-  localinstmng.InitLocalCf();
   /*
-  epxos_instance_proto::EpGlobalConf ecf;
-  ecf.mutable_local_nodeid()->set_id(123);
-  epxos_instance_proto::EnNodeInfo *t = ecf.add_node_list();
-  t->set_ip("190.0.0.1");
-  t->set_port(345);
-
-  localinstmng.UpdatelocalCf(ecf);
-
+  epaxos::NodeLocalInstanceId  localinstmng;
+  localinstmng.Init();
   
+  epxos_instance_proto::EpGlobalConf ecf;
+  ecf.mutable_local_nodeid()->set_id(1);
+
+  for(int i=0;i<3;i++){
+    epxos_instance_proto::EnNodeInfo *t = ecf.add_node_list();
+    t->mutable_iid()->set_id(i);
+    t->set_ip("198.0.0.1");
+    t->set_port(34523);
+  }
+
+  std::cout<<ecf.DebugString()<<std::endl;
+
+  for(int i=0;i<2;i++){
+    ecf.add_fast_gp_list()->set_id(i);
+  }
+  
+  localinstmng.UpdatelocalCf(ecf);
 
   std::cout<<localinstmng.GetLocalCf().DebugString()<<std::endl;
 
 
   std::cout<<localinstmng.IncId()<<std::endl;
   return 1;
-
   */
 
-  epxos_instance_proto::EpNodeId nd;
-  nd.set_id(3);
+  epxos_instance_proto::InstanceSwapMsg insswap;
+  epxos_instance_proto::EpaxosInsWriteReq req;
 
-  epaxos::LeveldbStorageKv *ldb_ = new epaxos::LeveldbStorageKv("./testdb");
-
-  epaxos::BatchGetKvValueArray* bgv = new epaxos::BatchGetKvValueArray(ldb_);
-
-  epxos_instance_proto::EpInstance ins;
-
-  ins.mutable_iid()->set_insid(localinstmng.IncId());
-
-  ins.mutable_iid()->mutable_nodeid()->CopyFrom(nd);
+  epaxos::InstanceManager inm;
 
   for(size_t i=0 ;i<= 10; i++){
     std::string key("vvvsapp" + std::to_string(i));
-    epxos_instance_proto::EpKeyValueItem* tmp = ins.mutable_depsids()->add_item();
+    epxos_instance_proto::EpKeyValueItem* tmp = req.add_list();
     tmp->set_key(key);
-    tmp->mutable_iid()->CopyFrom(ins.iid());
   }
 
-  bgv->GenNewInsMaxSeqID(ins);
+  inm.GenNewInstance(req,insswap);
 
-  std::cout<<ins.DebugString()<<std::endl;
-
+  std::cout<<insswap.DebugString()<<std::endl;
 
 /*
   epaxos::NodeNumCfg<uint64_t> nt("test.txt");
@@ -88,7 +86,6 @@ int main(int argc, char** argv) {
   uint64_t r= nt.readins(offset);
   std::cout<< "res "<< r <<std::endl;
 */
-
 
   /*
   
